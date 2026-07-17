@@ -8,6 +8,22 @@ export const roleIds = [
 
 export type RoleId = (typeof roleIds)[number];
 
+export const responsibilityIds = [
+  'first_initiative',
+  'follow_up',
+  'damage',
+  'space_creation',
+  'map_control',
+  'vision',
+  'save',
+  'control',
+  'objectives',
+  'farm_for_timing',
+  'flexible_role',
+] as const;
+
+export type ResponsibilityId = (typeof responsibilityIds)[number];
+
 export const fightPositionIds = [
   'frontline',
   'second_wave',
@@ -44,6 +60,7 @@ export const teamPlaystyleIds = [
   'protect_one',
   'split_map',
   'late_game_control',
+  'objective_control',
 ] as const;
 
 export type TeamPlaystyleId = (typeof teamPlaystyleIds)[number];
@@ -70,3 +87,22 @@ export const primaryAttributeIds = [
 ] as const;
 
 export type PrimaryAttributeId = (typeof primaryAttributeIds)[number];
+
+export const questionnaireStepIds = [
+  'identity',
+  'general_preferences',
+  'team_playstyles',
+  'individual_playstyles',
+  'vision',
+  'summary',
+  'hero_pool',
+] as const;
+
+export type QuestionnaireStepId = (typeof questionnaireStepIds)[number];
+
+export const questionnaireStatusIds = [
+  'draft',
+  'completed',
+  'confirmed',
+] as const;
+export type QuestionnaireStatus = (typeof questionnaireStatusIds)[number];

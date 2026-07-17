@@ -1,5 +1,10 @@
 export type ValidationErrorCode =
-  'required' | 'out_of_range' | 'invalid_option' | 'duplicate_player_hero';
+  | 'required'
+  | 'out_of_range'
+  | 'invalid_option'
+  | 'duplicate_player_hero'
+  | 'duplicate_category'
+  | 'not_found';
 
 export interface ValidationError {
   code: ValidationErrorCode;

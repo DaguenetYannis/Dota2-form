@@ -18,7 +18,7 @@ export function RatingSelect({
   return (
     <Field htmlFor={id} label={label}>
       <select
-        className="rounded-md border border-slate-300 bg-white px-3 py-2"
+        className="min-h-11 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-[var(--text-primary)]"
         id={id}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}

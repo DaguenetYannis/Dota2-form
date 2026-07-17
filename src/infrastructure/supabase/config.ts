@@ -9,9 +9,12 @@ export interface SupabasePublicEnv {
 }
 
 export class SupabaseConfigurationError extends Error {
-  constructor(message: string) {
+  readonly userMessage: string;
+
+  constructor(message: string, userMessage: string) {
     super(message);
     this.name = 'SupabaseConfigurationError';
+    this.userMessage = userMessage;
   }
 }
 
@@ -22,12 +25,16 @@ export function getSupabaseBrowserConfig(
   const publishableKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
   if (!url) {
-    throw new SupabaseConfigurationError('Missing NEXT_PUBLIC_SUPABASE_URL.');
+    throw new SupabaseConfigurationError(
+      'Missing NEXT_PUBLIC_SUPABASE_URL.',
+      'Configuration Supabase incomplète.',
+    );
   }
 
   if (!publishableKey) {
     throw new SupabaseConfigurationError(
       'Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.',
+      'Configuration Supabase incomplète.',
     );
   }
 

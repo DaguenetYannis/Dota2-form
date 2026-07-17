@@ -7,13 +7,14 @@ import {
   validateDraftPhase,
   validateIndividualPlaystyleIds,
   validatePoolTier,
+  validatePositiveInteger,
   validateRating,
   validateRoleIds,
 } from '@/domain/validation/validators';
 
 export type PlayerHeroDraft = Omit<
   PlayerHero,
-  'id' | 'createdAt' | 'updatedAt'
+  'id' | 'createdAt' | 'updatedAt' | 'order'
 >;
 
 export function assertValidPlayerHero(
@@ -26,6 +27,7 @@ export function assertValidPlayerHero(
     ...validateRating('confidence', input.confidence),
     ...validateRating('recentExperience', input.recentExperience),
     ...validateRating('blindPickConfidence', input.blindPickConfidence),
+    ...validatePositiveInteger('order', 'order' in input ? input.order : 1),
     ...validateDraftPhase('preferredDraftPhase', input.preferredDraftPhase),
     ...validateIndividualPlaystyleIds(
       'preferredPlaystyles',

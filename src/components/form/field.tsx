@@ -10,12 +10,15 @@ interface FieldProps {
 export function Field({ label, htmlFor, error, children }: FieldProps) {
   return (
     <div className="grid gap-2">
-      <label className="text-sm font-medium text-slate-800" htmlFor={htmlFor}>
+      <label
+        className="text-sm font-medium text-[var(--text-primary)]"
+        htmlFor={htmlFor}
+      >
         {label}
       </label>
       {children}
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--danger)]" role="alert">
           {error}
         </p>
       ) : null}

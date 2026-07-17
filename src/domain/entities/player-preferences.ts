@@ -1,6 +1,7 @@
 import type {
   FightPositionId,
   IndividualPlaystyleId,
+  RoleId,
   TeamPlaystyleId,
 } from '@/domain/value-objects/vocabularies';
 

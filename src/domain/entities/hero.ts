@@ -6,5 +6,9 @@ export interface Hero {
   internalName: string;
   displayName: string;
   primaryAttribute: PrimaryAttributeId;
-  imageUrl?: string;
+  assetSlug: string;
+  isActive: boolean;
+  imageSmallUrl: string | null;
+  imageLargeUrl: string | null;
+  imageFullUrl: string | null;
 }

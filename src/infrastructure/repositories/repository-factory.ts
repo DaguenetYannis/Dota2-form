@@ -1,13 +1,25 @@
 import { hasSupabaseBrowserConfig } from '@/infrastructure/supabase/config';
-import { getBrowserSupabaseClient } from '@/infrastructure/supabase/browser-client';
+import { createBrowserSupabaseClient } from '@/infrastructure/supabase/browser-client';
 import { InMemoryHeroRepository } from './in-memory-hero-repository';
+import {
+  InMemoryHeroCategoryRepository,
+  InMemoryPlayerHeroCategoryRepository,
+} from './in-memory-hero-category-repository';
 import { InMemoryPlayerHeroRepository } from './in-memory-player-hero-repository';
+import { InMemoryPlayerHeroEvaluationRepository } from './in-memory-player-hero-evaluation-repository';
 import { InMemoryPlayerPreferencesRepository } from './in-memory-player-preferences-repository';
+import { InMemoryPlayerQuestionnaireRepository } from './in-memory-player-questionnaire-repository';
 import { InMemoryPlayerRepository } from './in-memory-player-repository';
 import type { AppRepositories } from './repository-types';
 import { SupabaseHeroRepository } from './supabase-hero-repository';
+import {
+  SupabaseHeroCategoryRepository,
+  SupabasePlayerHeroCategoryRepository,
+} from './supabase-hero-category-repository';
 import { SupabasePlayerHeroRepository } from './supabase-player-hero-repository';
+import { SupabasePlayerHeroEvaluationRepository } from './supabase-player-hero-evaluation-repository';
 import { SupabasePlayerPreferencesRepository } from './supabase-player-preferences-repository';
+import { SupabasePlayerQuestionnaireRepository } from './supabase-player-questionnaire-repository';
 import { SupabasePlayerRepository } from './supabase-player-repository';
 
 export type RepositoryMode = 'auto' | 'memory' | 'supabase';
@@ -32,22 +44,32 @@ export function createInMemoryRepositories(): AppRepositories {
     preferences: new InMemoryPlayerPreferencesRepository(),
     heroes: new InMemoryHeroRepository(),
     playerHeroes: new InMemoryPlayerHeroRepository(),
+    heroEvaluations: new InMemoryPlayerHeroEvaluationRepository(),
+    heroCategories: new InMemoryHeroCategoryRepository(),
+    playerHeroCategories: new InMemoryPlayerHeroCategoryRepository(),
+    questionnaires: new InMemoryPlayerQuestionnaireRepository(),
   };
 }
 
-export function createSupabaseRepositories(): AppRepositories {
-  const client = getBrowserSupabaseClient();
+export function createSupabaseRepositories(
+  env: RepositoryFactoryEnv = getRepositoryFactoryEnv(),
+): AppRepositories {
+  const client = createBrowserSupabaseClient(env);
 
   return {
     players: new SupabasePlayerRepository(client),
     preferences: new SupabasePlayerPreferencesRepository(client),
     heroes: new SupabaseHeroRepository(client),
     playerHeroes: new SupabasePlayerHeroRepository(client),
+    heroEvaluations: new SupabasePlayerHeroEvaluationRepository(client),
+    heroCategories: new SupabaseHeroCategoryRepository(client),
+    playerHeroCategories: new SupabasePlayerHeroCategoryRepository(client),
+    questionnaires: new SupabasePlayerQuestionnaireRepository(client),
   };
 }
 
 export function createRepositories(
-  env: RepositoryFactoryEnv = process.env,
+  env: RepositoryFactoryEnv = getRepositoryFactoryEnv(),
 ): AppRepositories {
   const mode = normalizeRepositoryMode(env.NEXT_PUBLIC_REPOSITORY_MODE);
 
@@ -56,7 +78,7 @@ export function createRepositories(
   }
 
   if (mode === 'supabase' || hasSupabaseBrowserConfig(env)) {
-    return createSupabaseRepositories();
+    return createSupabaseRepositories(env);
   }
 
   if (env.NODE_ENV === 'production') {
@@ -65,15 +87,36 @@ export function createRepositories(
     );
   }
 
+  // Default to in-memory repositories in development when Supabase is not configured
+  if (env.NODE_ENV === 'development') {
+    return createInMemoryRepositories();
+  }
+
   throw new RepositoryConfigurationError(
     'Repository mode is not configured. Set NEXT_PUBLIC_REPOSITORY_MODE=memory for explicit local development, or configure Supabase variables.',
   );
 }
 
 function normalizeRepositoryMode(value: string | undefined): RepositoryMode {
-  if (value === 'memory' || value === 'supabase' || value === 'auto') {
-    return value;
+  const normalized = value?.trim().toLowerCase();
+
+  if (
+    normalized === 'memory' ||
+    normalized === 'supabase' ||
+    normalized === 'auto'
+  ) {
+    return normalized;
   }
 
   return 'auto';
+}
+
+function getRepositoryFactoryEnv(): RepositoryFactoryEnv {
+  return {
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_REPOSITORY_MODE: process.env.NEXT_PUBLIC_REPOSITORY_MODE,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  };
 }

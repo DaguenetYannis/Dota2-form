@@ -16,9 +16,40 @@ import {
 import { ListPlayerHeroPool } from '@/application/use-cases/list-player-hero-pool';
 import { RemoveHeroFromPlayerPool } from '@/application/use-cases/remove-hero-from-player-pool';
 import { UpdatePlayerHero } from '@/application/use-cases/update-player-hero';
+import { UpdatePlayerHeroComfortTier } from '@/application/use-cases/update-player-hero-comfort-tier';
+import {
+  AssignHeroCategory,
+  CreateHeroCategory,
+  DeleteHeroCategory,
+  ListHeroCategories,
+  RenameHeroCategory,
+  SyncHeroCategoryAssignments,
+  UnassignHeroCategory,
+} from '@/application/use-cases/hero-category-use-cases';
+import {
+  ListCompleteHeroEvaluations,
+  LoadHeroEvaluation,
+  LoadLegacyHeroEvaluation,
+  SaveHeroEvaluation,
+} from '@/application/use-cases/hero-evaluation-use-cases';
+import {
+  UpdatePlayerProfile,
+  type UpdatePlayerProfileInput,
+} from '@/application/use-cases/update-player-profile';
 import { UpdatePlayerPreferences } from '@/application/use-cases/update-player-preferences';
 import type { Player } from '@/domain/entities/player';
+import { normalizePlayerPseudo } from '@/domain/entities/player';
 import type { PlayerHero } from '@/domain/entities/player-hero';
+import type {
+  HeroCategory,
+  PlayerHeroCategory,
+} from '@/domain/entities/hero-category';
+import type {
+  HeroMetricMap,
+  LegacyPlayerHeroEvaluation,
+  PlayerHeroEvaluation,
+  PlayerHeroEvaluationV2,
+} from '@/domain/entities/player-hero-evaluation';
 import type { PlayerPreferences } from '@/domain/entities/player-preferences';
 import { DomainValidationError } from '@/domain/validation/validation-error';
 import { isoClock } from '@/application/services/clock';
@@ -26,30 +57,68 @@ import { createId } from '@/application/services/id-generator';
 import { heroFixture } from '@/infrastructure/repositories/hero-fixture';
 import { createRepositories } from '@/infrastructure/repositories/repository-factory';
 import type { PlayerHeroDraft } from '@/application/use-cases/player-hero-validation';
+import type { Hero } from '@/domain/entities/hero';
 
 interface AppDataSnapshot {
   players: Player[];
   preferences: PlayerPreferences[];
   playerHeroes: PlayerHero[];
-  heroes: typeof heroFixture;
+  heroCategories: HeroCategory[];
+  playerHeroCategories: PlayerHeroCategory[];
+  heroEvaluations: PlayerHeroEvaluation[];
+  heroes: Hero[];
 }
 
 interface AppStateValue {
   currentPlayer: Player | null;
   currentPreferences: PlayerPreferences | null;
   heroPool: PlayerHero[];
+  heroCategories: HeroCategory[];
+  playerHeroCategories: PlayerHeroCategory[];
+  heroEvaluations: PlayerHeroEvaluation[];
   heroes: typeof heroFixture;
   error: string | null;
-  createProfile(input: CreatePlayerProfileInput): Promise<void>;
-  updatePreferences(input: PlayerPreferences): Promise<void>;
-  addHero(input: PlayerHeroDraft): Promise<void>;
-  updateHero(input: PlayerHero): Promise<void>;
-  removeHero(id: string): Promise<void>;
+  resolvePlayer(pseudonym: string): Promise<Player | undefined>;
+  createProfile(input: CreatePlayerProfileInput): Promise<boolean>;
+  saveProfile(input: UpdatePlayerProfileInput): Promise<boolean>;
+  updatePreferences(input: PlayerPreferences): Promise<boolean>;
+  addHero(input: PlayerHeroDraft): Promise<boolean>;
+  updateHero(input: PlayerHero): Promise<boolean>;
+  updateHeroComfortTier(
+    playerHero: PlayerHero,
+    poolTier: PlayerHero['poolTier'],
+  ): Promise<boolean>;
+  removeHero(id: string): Promise<boolean>;
+  createHeroCategory(name: string): Promise<boolean>;
+  renameHeroCategory(categoryId: string, name: string): Promise<boolean>;
+  deleteHeroCategory(categoryId: string): Promise<boolean>;
+  assignHeroCategory(heroId: string, categoryId: string): Promise<boolean>;
+  unassignHeroCategory(heroId: string, categoryId: string): Promise<boolean>;
+  syncHeroCategoryAssignments(
+    categoryId: string,
+    heroIds: string[],
+  ): Promise<boolean>;
+  loadHeroEvaluation(heroId: string): Promise<PlayerHeroEvaluationV2 | null>;
+  loadLegacyHeroEvaluation(
+    heroId: string,
+  ): Promise<LegacyPlayerHeroEvaluation | null>;
+  saveHeroEvaluation(heroId: string, metrics: HeroMetricMap): Promise<boolean>;
+  listCompleteHeroEvaluations(): Promise<PlayerHeroEvaluationV2[]>;
   snapshot(): Promise<AppDataSnapshot>;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
 const defaultTeamId = 'local-team';
+const defaultPreferences = {
+  farmPriority: 3,
+  preferredGamePace: 3,
+  cooldownDependencyComfort: 3,
+  sacrificeComfort: 3,
+  shotCallingComfort: 3,
+  preferredFightPositions: [],
+  preferredIndividualPlaystyles: [],
+  preferredTeamPlaystyles: [],
+};
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const repositories = useMemo(() => createRepositories(), []);
@@ -57,6 +126,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [currentPreferences, setCurrentPreferences] =
     useState<PlayerPreferences | null>(null);
   const [heroPool, setHeroPool] = useState<PlayerHero[]>([]);
+  const [heroCategories, setHeroCategories] = useState<HeroCategory[]>([]);
+  const [playerHeroCategories, setPlayerHeroCategories] = useState<
+    PlayerHeroCategory[]
+  >([]);
+  const [heroEvaluations, setHeroEvaluations] = useState<
+    PlayerHeroEvaluationV2[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
 
   const refreshHeroPool = useCallback(
@@ -69,6 +145,30 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [repositories.playerHeroes],
   );
 
+  const refreshHeroCategories = useCallback(
+    async (playerId: string) => {
+      const result = await new ListHeroCategories(
+        repositories.heroCategories,
+        repositories.playerHeroCategories,
+      ).execute(playerId);
+      setHeroCategories(result.categories);
+      setPlayerHeroCategories(result.assignments);
+    },
+    [repositories.heroCategories, repositories.playerHeroCategories],
+  );
+
+  const refreshHeroEvaluations = useCallback(
+    async (playerId: string) => {
+      setHeroEvaluations(
+        (await repositories.heroEvaluations.listByPlayerId(playerId, 2)).filter(
+          (item): item is PlayerHeroEvaluationV2 =>
+            item.metricSchemaVersion === 2,
+        ),
+      );
+    },
+    [repositories.heroEvaluations],
+  );
+
   const capture = useCallback(
     async <T,>(operation: () => Promise<T>): Promise<T | undefined> => {
       try {
@@ -77,6 +177,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       } catch (caught) {
         if (caught instanceof DomainValidationError) {
           setError(caught.errors.map((item) => item.message).join(' '));
+          return undefined;
+        }
+        const userMessage = getUserMessage(caught);
+        if (userMessage) {
+          setError(userMessage);
           return undefined;
         }
         setError('Une erreur inattendue est survenue.');
@@ -91,10 +196,58 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       currentPlayer,
       currentPreferences,
       heroPool,
+      heroCategories,
+      playerHeroCategories,
+      heroEvaluations,
       heroes: heroFixture,
       error,
+      async resolvePlayer(pseudonym) {
+        return capture(async () => {
+          const displayPseudo = pseudonym.trim();
+          const normalizedPseudo = normalizePlayerPseudo(displayPseudo);
+          const existing =
+            await repositories.players.findByNormalizedPseudo(normalizedPseudo);
+
+          if (existing) {
+            const existingPreferences =
+              await repositories.preferences.findByPlayerId(existing.id);
+            const preferences =
+              existingPreferences ??
+              (await repositories.preferences.save({
+                playerId: existing.id,
+                ...defaultPreferences,
+              }));
+
+            setCurrentPlayer(existing);
+            setCurrentPreferences(preferences);
+            await refreshHeroPool(existing.id);
+            await refreshHeroCategories(existing.id);
+            await refreshHeroEvaluations(existing.id);
+            return existing;
+          }
+
+          const result = await new CreatePlayerProfile(
+            repositories.players,
+            repositories.preferences,
+            createId,
+            isoClock,
+          ).execute({
+            teamId: defaultTeamId,
+            pseudonym: displayPseudo,
+            mainRole: 'position_1',
+            secondaryRoles: [],
+            preferences: defaultPreferences,
+          });
+          setCurrentPlayer(result.player);
+          setCurrentPreferences(result.preferences);
+          await refreshHeroPool(result.player.id);
+          await refreshHeroCategories(result.player.id);
+          await refreshHeroEvaluations(result.player.id);
+          return result.player;
+        });
+      },
       async createProfile(input) {
-        await capture(async () => {
+        const result = await capture(async () => {
           const result = await new CreatePlayerProfile(
             repositories.players,
             repositories.preferences,
@@ -104,28 +257,49 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           setCurrentPlayer(result.player);
           setCurrentPreferences(result.preferences);
           await refreshHeroPool(result.player.id);
+          await refreshHeroCategories(result.player.id);
+          await refreshHeroEvaluations(result.player.id);
+          return true;
         });
+        return Boolean(result);
+      },
+      async saveProfile(input) {
+        const result = await capture(async () => {
+          const result = await new UpdatePlayerProfile(
+            repositories.players,
+            repositories.preferences,
+            isoClock,
+          ).execute(input);
+          setCurrentPlayer(result.player);
+          setCurrentPreferences(result.preferences);
+          return true;
+        });
+        return Boolean(result);
       },
       async updatePreferences(input) {
-        await capture(async () => {
+        const result = await capture(async () => {
           const saved = await new UpdatePlayerPreferences(
             repositories.preferences,
           ).execute(input);
           setCurrentPreferences(saved);
+          return true;
         });
+        return Boolean(result);
       },
       async addHero(input) {
-        await capture(async () => {
+        const result = await capture(async () => {
           const saved = await new AddHeroToPlayerPool(
             repositories.playerHeroes,
             createId,
             isoClock,
           ).execute(input);
           setHeroPool((items) => [...items, saved]);
+          return true;
         });
+        return Boolean(result);
       },
       async updateHero(input) {
-        await capture(async () => {
+        const result = await capture(async () => {
           const saved = await new UpdatePlayerHero(
             repositories.playerHeroes,
             isoClock,
@@ -133,21 +307,190 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           setHeroPool((items) =>
             items.map((item) => (item.id === saved.id ? saved : item)),
           );
+          return true;
         });
+        return Boolean(result);
+      },
+      async updateHeroComfortTier(playerHero, poolTier) {
+        const result = await capture(async () => {
+          const saved = await new UpdatePlayerHeroComfortTier(
+            repositories.playerHeroes,
+            isoClock,
+          ).execute(playerHero, poolTier);
+          setHeroPool((items) =>
+            items.map((item) => (item.id === saved.id ? saved : item)),
+          );
+          return true;
+        });
+        return Boolean(result);
       },
       async removeHero(id) {
-        await capture(async () => {
-          await new RemoveHeroFromPlayerPool(repositories.playerHeroes).execute(
-            id,
-          );
+        const result = await capture(async () => {
+          await new RemoveHeroFromPlayerPool(
+            repositories.playerHeroes,
+            repositories.playerHeroCategories,
+            repositories.heroEvaluations,
+          ).execute(id);
           setHeroPool((items) => items.filter((item) => item.id !== id));
+          if (currentPlayer) {
+            await refreshHeroCategories(currentPlayer.id);
+            await refreshHeroEvaluations(currentPlayer.id);
+          }
+          return true;
         });
+        return Boolean(result);
+      },
+      async createHeroCategory(name) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new CreateHeroCategory(
+            repositories.heroCategories,
+            createId,
+            isoClock,
+          ).execute(currentPlayer.id, name);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async renameHeroCategory(categoryId, name) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new RenameHeroCategory(
+            repositories.heroCategories,
+            isoClock,
+          ).execute(categoryId, name);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async deleteHeroCategory(categoryId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new DeleteHeroCategory(
+            repositories.heroCategories,
+            repositories.playerHeroCategories,
+          ).execute(categoryId);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async assignHeroCategory(heroId, categoryId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new AssignHeroCategory(
+            repositories.playerHeroes,
+            repositories.heroCategories,
+            repositories.playerHeroCategories,
+            isoClock,
+          ).execute(currentPlayer.id, heroId, categoryId);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async unassignHeroCategory(heroId, categoryId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new UnassignHeroCategory(
+            repositories.playerHeroCategories,
+          ).execute(currentPlayer.id, heroId, categoryId);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async syncHeroCategoryAssignments(categoryId, heroIds) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new SyncHeroCategoryAssignments(
+            repositories.playerHeroes,
+            repositories.heroCategories,
+            repositories.playerHeroCategories,
+            isoClock,
+          ).execute(currentPlayer.id, categoryId, heroIds);
+          await refreshHeroCategories(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async loadHeroEvaluation(heroId) {
+        if (!currentPlayer) {
+          return null;
+        }
+        const result = await capture(async () =>
+          new LoadHeroEvaluation(repositories.heroEvaluations).execute(
+            currentPlayer.id,
+            heroId,
+          ),
+        );
+        return result ?? null;
+      },
+      async loadLegacyHeroEvaluation(heroId) {
+        if (!currentPlayer) {
+          return null;
+        }
+        const result = await capture(async () =>
+          new LoadLegacyHeroEvaluation(repositories.heroEvaluations).execute(
+            currentPlayer.id,
+            heroId,
+          ),
+        );
+        return result ?? null;
+      },
+      async saveHeroEvaluation(heroId, metrics) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new SaveHeroEvaluation(
+            repositories.playerHeroes,
+            repositories.heroEvaluations,
+            isoClock,
+          ).execute({
+            playerId: currentPlayer.id,
+            heroId,
+            metrics,
+          });
+          await refreshHeroEvaluations(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async listCompleteHeroEvaluations() {
+        if (!currentPlayer) {
+          return [];
+        }
+        return (
+          (await capture(async () =>
+            new ListCompleteHeroEvaluations(
+              repositories.heroEvaluations,
+            ).execute(currentPlayer.id),
+          )) ?? []
+        );
       },
       async snapshot() {
         return {
           players: await repositories.players.list(),
           preferences: await repositories.preferences.list(),
           playerHeroes: await repositories.playerHeroes.list(),
+          heroCategories: await repositories.heroCategories.list(),
+          playerHeroCategories: await repositories.playerHeroCategories.list(),
+          heroEvaluations: await repositories.heroEvaluations.list(),
           heroes: await repositories.heroes.list(),
         };
       },
@@ -157,7 +500,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       currentPlayer,
       currentPreferences,
       error,
+      heroEvaluations,
+      heroCategories,
       heroPool,
+      playerHeroCategories,
+      refreshHeroCategories,
+      refreshHeroEvaluations,
       refreshHeroPool,
       repositories,
     ],
@@ -176,4 +524,17 @@ export function useAppState(): AppStateValue {
     throw new Error('useAppState must be used within AppStateProvider');
   }
   return value;
+}
+
+function getUserMessage(error: unknown): string | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'userMessage' in error &&
+    typeof error.userMessage === 'string'
+  ) {
+    return error.userMessage;
+  }
+
+  return undefined;
 }

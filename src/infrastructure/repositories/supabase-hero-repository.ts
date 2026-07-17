@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Hero } from '@/domain/entities/hero';
 import type { HeroRepository } from '@/domain/repositories/hero-repository';
 import type { Database } from '@/infrastructure/supabase/database.types';
-import { SupabaseRepositoryNotImplementedError } from './supabase-repository-error';
+import { heroFixture } from './hero-fixture';
 
 export class SupabaseHeroRepository implements HeroRepository {
   constructor(private readonly client: SupabaseClient<Database>) {
@@ -10,10 +10,10 @@ export class SupabaseHeroRepository implements HeroRepository {
   }
 
   async list(): Promise<Hero[]> {
-    throw new SupabaseRepositoryNotImplementedError('HeroRepository');
+    return [...heroFixture];
   }
 
-  async findById(): Promise<Hero | null> {
-    throw new SupabaseRepositoryNotImplementedError('HeroRepository');
+  async findById(id: string): Promise<Hero | null> {
+    return heroFixture.find((hero) => hero.id === id) ?? null;
   }
 }

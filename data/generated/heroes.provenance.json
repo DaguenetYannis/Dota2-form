@@ -1,0 +1,8 @@
+{
+  "sourceName": "OpenDota hero constants",
+  "sourceUrl": "https://raw.githubusercontent.com/odota/dotaconstants/master/build/heroes.json",
+  "sourceFile": "data/source/opendota-heroes.json",
+  "generator": "scripts/generate-heroes.js",
+  "generatorSchemaVersion": "1.0",
+  "generatedAt": "2026-07-17T12:59:04.639Z"
+}

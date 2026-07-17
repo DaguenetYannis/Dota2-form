@@ -9,6 +9,7 @@ export interface PlayerHero {
   id: string;
   playerId: string;
   heroId: string;
+  order: number;
   roles: RoleId[];
   poolTier: PoolTierId;
   comfort: number;

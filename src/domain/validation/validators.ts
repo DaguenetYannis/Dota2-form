@@ -4,11 +4,13 @@ import {
   individualPlaystyleIds,
   poolTierIds,
   roleIds,
+  responsibilityIds,
   teamPlaystyleIds,
   type DraftPhaseId,
   type FightPositionId,
   type IndividualPlaystyleId,
   type PoolTierId,
+  type ResponsibilityId,
   type RoleId,
   type TeamPlaystyleId,
 } from '@/domain/value-objects/vocabularies';
@@ -24,6 +26,23 @@ export function validateRating(
         code: 'out_of_range',
         field,
         message: `${field} doit etre un entier entre 0 et 5.`,
+      },
+    ];
+  }
+
+  return [];
+}
+
+export function validatePositiveInteger(
+  field: string,
+  value: number,
+): ValidationError[] {
+  if (!Number.isInteger(value) || value < 1) {
+    return [
+      {
+        code: 'out_of_range',
+        field,
+        message: `${field} doit etre un entier positif.`,
       },
     ];
   }
@@ -103,6 +122,12 @@ export const validateTeamPlaystyleIds = (
   values: string[],
 ): ValidationError[] =>
   validateOptions<TeamPlaystyleId>(field, values, teamPlaystyleIds);
+
+export const validateResponsibilityIds = (
+  field: string,
+  values: string[],
+): ValidationError[] =>
+  validateOptions<ResponsibilityId>(field, values, responsibilityIds);
 
 export const validatePoolTier = (
   field: string,

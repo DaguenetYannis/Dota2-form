@@ -1,4 +1,5 @@
 import type { Player } from '@/domain/entities/player';
+import { normalizePlayerPseudo } from '@/domain/entities/player';
 import type { PlayerPreferences } from '@/domain/entities/player-preferences';
 import type { PlayerPreferencesRepository } from '@/domain/repositories/player-preferences-repository';
 import type { PlayerRepository } from '@/domain/repositories/player-repository';
@@ -59,6 +60,7 @@ export class CreatePlayerProfile {
       id: this.idGenerator(),
       teamId: input.teamId,
       pseudonym: input.pseudonym.trim(),
+      normalizedPseudo: normalizePlayerPseudo(input.pseudonym),
       mainRole: input.mainRole,
       secondaryRoles: input.secondaryRoles,
       createdAt: now,

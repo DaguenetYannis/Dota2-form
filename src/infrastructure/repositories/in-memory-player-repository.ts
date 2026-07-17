@@ -13,6 +13,16 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     return this.players.get(id) ?? null;
   }
 
+  async findByNormalizedPseudo(
+    normalizedPseudo: string,
+  ): Promise<Player | null> {
+    return (
+      Array.from(this.players.values()).find(
+        (player) => player.normalizedPseudo === normalizedPseudo,
+      ) ?? null
+    );
+  }
+
   async list(): Promise<Player[]> {
     return Array.from(this.players.values());
   }

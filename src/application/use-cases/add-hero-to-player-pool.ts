@@ -28,10 +28,15 @@ export class AddHeroToPlayerPool {
       ]);
     }
 
+    const existingHeroes = await this.playerHeroes.listByPlayerId(
+      input.playerId,
+    );
+    const nextOrder = existingHeroes.length + 1;
     const now = this.clock();
     return this.playerHeroes.add({
       ...input,
       id: this.idGenerator(),
+      order: nextOrder,
       createdAt: now,
       updatedAt: now,
     });
