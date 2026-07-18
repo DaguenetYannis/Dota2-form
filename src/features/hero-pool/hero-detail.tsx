@@ -2,14 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import {
+  filterHeroMatchupCatalogue,
+  getHeroMatchupCatalogueCounts,
+  type MatchupCategoryFilter,
+} from '@/application/queries/filter-hero-matchup-catalogue';
 import { HeroThumbnail } from '@/components/hero-thumbnail';
 import { SaveStatus, type SaveState } from '@/components/save-status';
 import type { Hero } from '@/domain/entities/hero';
 import { isCorePlayerHero } from '@/domain/entities/player-hero';
 import {
-  getHeroMatchupGroup,
+  getMatchupCategory,
   heroMatchupScores,
-  type HeroMatchupGroup,
+  type MatchupCategory,
   type HeroMatchupScore,
   type PlayerHeroMatchup,
 } from '@/domain/entities/player-hero-matchup';
@@ -33,7 +38,7 @@ import {
 import { poolTierLabels } from '@/lib/labels';
 import { sortHeroesByDisplayName } from '@/lib/sort-heroes';
 
-type MatchupFilter = 'all' | 'avoid' | 'neutral' | 'favorable' | 'unrated';
+type MatchupSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
 const zeroMetricLabels: Record<HeroMetricId, string> = {
   mobility: 'Aucune mobilité particulière',
@@ -50,12 +55,29 @@ const zeroMetricLabels: Record<HeroMetricId, string> = {
 const matchupScoreLabels: Record<HeroMatchupScore, string> = {
   0: 'Ce héros neutralise complètement le mien.',
   1: 'Le matchup est très défavorable pour mon héros.',
-  2: 'Le matchup est plutôt défavorable pour mon héros.',
+  2: 'Le matchup est légèrement défavorable pour mon héros.',
   3: "Le matchup n'est ni favorable ni défavorable.",
-  4: 'Le matchup est plutôt favorable pour mon héros.',
+  4: 'Le matchup est légèrement favorable pour mon héros.',
   5: 'Le matchup est très favorable pour mon héros.',
   6: 'Mon héros est un contre naturel de celui-ci.',
 };
+
+const matchupScoreHeadings: Record<HeroMatchupScore, string> = {
+  0: '0 - Neutralise complètement mon héros',
+  1: '1 - Très défavorable',
+  2: '2 - Légèrement défavorable',
+  3: '3 - Ni favorable ni défavorable',
+  4: '4 - Légèrement favorable',
+  5: '5 - Très favorable',
+  6: '6 - Mon héros est un contre naturel',
+};
+
+const matchupScoreOrderByCategory: Record<MatchupCategory, HeroMatchupScore[]> =
+  {
+    avoid: [0, 1],
+    neutral: [2, 3, 4],
+    favorable: [6, 5],
+  };
 
 export function HeroDetail({ heroId }: { heroId: string }) {
   const {
@@ -90,12 +112,20 @@ export function HeroDetail({ heroId }: { heroId: string }) {
   );
   const [matchups, setMatchups] = useState<PlayerHeroMatchup[]>([]);
   const [matchupQuery, setMatchupQuery] = useState('');
-  const [matchupFilter, setMatchupFilter] = useState<MatchupFilter>('all');
+  const [matchupFilter, setMatchupFilter] =
+    useState<MatchupCategoryFilter>('all');
   const [editingOpponentId, setEditingOpponentId] = useState<string | null>(
     null,
   );
-  const [pendingMatchupScore, setPendingMatchupScore] =
-    useState<HeroMatchupScore | null>(null);
+  const [draftScores, setDraftScores] = useState<
+    Record<string, HeroMatchupScore | null>
+  >({});
+  const [matchupSaveStates, setMatchupSaveStates] = useState<
+    Record<string, MatchupSaveState>
+  >({});
+  const [matchupErrors, setMatchupErrors] = useState<Record<string, string>>(
+    {},
+  );
   const [timingStart, setTimingStart] = useState(20);
   const [timingEnd, setTimingEnd] = useState(25);
   const selectedComparisonIdsRef = useRef<string[]>([]);
@@ -197,33 +227,25 @@ export function HeroDetail({ heroId }: { heroId: string }) {
       ),
     [matchups],
   );
-  const sortedOpponentHeroes = useMemo(
-    () =>
-      sortHeroesByDisplayName(
-        heroes.filter((candidate) => candidate.id !== heroId),
-        (candidate) => candidate,
-      ),
-    [heroes, heroId],
-  );
   const matchupSummary = useMemo(
     () => ({
       avoid: sortMatchupCards(
         matchups.filter(
-          (matchup) => getHeroMatchupGroup(matchup.score) === 'avoid',
+          (matchup) => getMatchupCategory(matchup.score) === 'avoid',
         ),
         heroesById,
         'avoid',
       ),
       favorable: sortMatchupCards(
         matchups.filter(
-          (matchup) => getHeroMatchupGroup(matchup.score) === 'favorable',
+          (matchup) => getMatchupCategory(matchup.score) === 'favorable',
         ),
         heroesById,
         'favorable',
       ),
       neutral: sortMatchupCards(
         matchups.filter(
-          (matchup) => getHeroMatchupGroup(matchup.score) === 'neutral',
+          (matchup) => getMatchupCategory(matchup.score) === 'neutral',
         ),
         heroesById,
         'neutral',
@@ -231,20 +253,26 @@ export function HeroDetail({ heroId }: { heroId: string }) {
     }),
     [heroesById, matchups],
   );
-  const catalogueOpponents = useMemo(() => {
-    const normalized = normalizeMatchupSearch(matchupQuery);
-    return sortedOpponentHeroes.filter((opponent) => {
-      const matchup = matchupsByOpponent.get(opponent.id);
-      const group = matchup ? getHeroMatchupGroup(matchup.score) : 'unrated';
-      if (
-        normalized &&
-        !normalizeMatchupSearch(opponent.displayName).includes(normalized)
-      ) {
-        return false;
-      }
-      return matchupFilter === 'all' ? true : group === matchupFilter;
-    });
-  }, [matchupFilter, matchupQuery, matchupsByOpponent, sortedOpponentHeroes]);
+  const matchupCounts = useMemo(
+    () =>
+      getHeroMatchupCatalogueCounts({
+        heroes,
+        currentHeroId: heroId,
+        matchups,
+      }),
+    [heroes, heroId, matchups],
+  );
+  const catalogueOpponents = useMemo(
+    () =>
+      filterHeroMatchupCatalogue({
+        heroes,
+        currentHeroId: heroId,
+        matchups,
+        categoryFilter: matchupFilter,
+        searchText: matchupQuery,
+      }),
+    [heroes, heroId, matchupFilter, matchupQuery, matchups],
+  );
 
   async function handleSave() {
     setStatus('saving');
@@ -285,36 +313,88 @@ export function HeroDetail({ heroId }: { heroId: string }) {
   function openMatchupEditor(opponentHeroId: string) {
     const existing = matchupsByOpponent.get(opponentHeroId);
     setEditingOpponentId(opponentHeroId);
-    setPendingMatchupScore(existing?.score ?? null);
+    setDraftScores((current) => ({
+      ...current,
+      [opponentHeroId]: existing?.score ?? null,
+    }));
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: existing ? 'idle' : 'dirty',
+    }));
+    setMatchupErrors((current) => ({ ...current, [opponentHeroId]: '' }));
   }
 
-  async function handleSaveMatchup() {
-    if (!editingOpponentId || pendingMatchupScore === null) {
+  function handleDraftScoreChange(
+    opponentHeroId: string,
+    score: HeroMatchupScore,
+  ) {
+    setDraftScores((current) => ({ ...current, [opponentHeroId]: score }));
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: 'dirty',
+    }));
+    setMatchupErrors((current) => ({ ...current, [opponentHeroId]: '' }));
+  }
+
+  async function handleSaveMatchup(opponentHeroId: string) {
+    const draftScore = draftScores[opponentHeroId];
+    if (draftScore === null || draftScore === undefined) {
       return;
     }
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: 'saving',
+    }));
+    setMatchupErrors((current) => ({ ...current, [opponentHeroId]: '' }));
     setStatus('saving');
-    const saved = await saveHeroMatchup(
-      heroId,
-      editingOpponentId,
-      pendingMatchupScore,
-    );
+    const saved = await saveHeroMatchup(heroId, opponentHeroId, draftScore);
     setStatus(saved ? 'saved' : 'failed');
     if (saved) {
       setMatchups(await loadHeroMatchups(heroId));
-      setEditingOpponentId(null);
-      setPendingMatchupScore(null);
+      setMatchupSaveStates((current) => ({
+        ...current,
+        [opponentHeroId]: 'saved',
+      }));
+      setEditingOpponentId(opponentHeroId);
+      return;
     }
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: 'error',
+    }));
+    setMatchupErrors((current) => ({
+      ...current,
+      [opponentHeroId]: "Échec de l'enregistrement.",
+    }));
   }
 
   async function handleRemoveMatchup(opponentHeroId: string) {
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: 'saving',
+    }));
+    setMatchupErrors((current) => ({ ...current, [opponentHeroId]: '' }));
     setStatus('saving');
     const removed = await removeHeroMatchup(heroId, opponentHeroId);
     setStatus(removed ? 'saved' : 'failed');
     if (removed) {
       setMatchups(await loadHeroMatchups(heroId));
+      setDraftScores((current) => ({ ...current, [opponentHeroId]: null }));
+      setMatchupSaveStates((current) => ({
+        ...current,
+        [opponentHeroId]: 'saved',
+      }));
       setEditingOpponentId(null);
-      setPendingMatchupScore(null);
+      return;
     }
+    setMatchupSaveStates((current) => ({
+      ...current,
+      [opponentHeroId]: 'error',
+    }));
+    setMatchupErrors((current) => ({
+      ...current,
+      [opponentHeroId]: "Échec de l'enregistrement.",
+    }));
   }
 
   async function handleCompare() {
@@ -483,9 +563,9 @@ export function HeroDetail({ heroId }: { heroId: string }) {
 
         {legacyEvaluation && !evaluation ? (
           <p className="rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-4 text-sm text-[var(--text-secondary)]">
-            Ce hÃ©ros possÃ¨de une ancienne Ã©valuation. Les critÃ¨res du profil
-            ont Ã©voluÃ©. ComplÃ¨te la nouvelle Ã©valuation pour afficher le
-            radar actuel et comparer ce hÃ©ros.
+            Ce héros possède une ancienne évaluation. Les critères du profil ont
+            évolué. Complète la nouvelle évaluation pour afficher le radar
+            actuel et comparer ce héros.
           </p>
         ) : null}
 
@@ -519,26 +599,26 @@ export function HeroDetail({ heroId }: { heroId: string }) {
           Profil radar
         </h2>
         <p className="text-sm text-[var(--text-secondary)]">
-          Ce radar decrit ta perception et ton utilisation du heros. Une valeur
-          elevee represente une caracteristique marquee, pas necessairement une
-          meilleure qualite. Une forte dependance au farm indique un besoin
+          Ce radar décrit ta perception et ton utilisation du héros. Une valeur
+          élevée représente une caractéristique marquée, pas nécessairement une
+          meilleure qualité. Une forte dépendance au farm indique un besoin
           important de ressources.
         </p>
         <ul className="grid gap-1 text-sm text-[var(--text-secondary)] sm:grid-cols-2">
-          <li>Chasseur : Initiation, Mobilite, Degats aux heros</li>
+          <li>Chasseur : Initiation, Mobilité, Dégâts aux héros</li>
           <li>
-            Core / Pusher : Degats aux heros, Dependance au farm, Degats aux
-            batiments
+            Core / Pusher : Dégâts aux héros, Dépendance au farm, Dégâts aux
+            bâtiments
           </li>
-          <li>Support / Facilitateur : Enabler, Save, Controle</li>
-          <li>Teamfight / Engagement : Controle, Teamfight, Initiation</li>
+          <li>Support / Facilitateur : Enabler, Save, Contrôle</li>
+          <li>Teamfight / Engagement : Contrôle, Teamfight, Initiation</li>
         </ul>
         {ownSeries && complete ? (
           <RadarChart series={[ownSeries]} />
         ) : (
           <p className="rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-4 text-sm text-[var(--text-secondary)]">
-            Le radar complet apparaitra quand les neuf metriques auront une
-            reponse. Les valeurs manquantes ne sont pas dessinees comme zero.
+            Le radar complet apparaîtra quand les neuf métriques auront une
+            réponse. Les valeurs manquantes ne sont pas dessinées comme zéro.
           </p>
         )}
         <MetricValueTable
@@ -566,18 +646,18 @@ export function HeroDetail({ heroId }: { heroId: string }) {
           onRemove={handleRemoveMatchup}
         />
         <MatchupSummarySection
-          group="favorable"
-          heroesById={heroesById}
-          matchups={matchupSummary.favorable}
-          title="Matchups favorables"
-          onEdit={openMatchupEditor}
-          onRemove={handleRemoveMatchup}
-        />
-        <MatchupSummarySection
           group="neutral"
           heroesById={heroesById}
           matchups={matchupSummary.neutral}
           title="Matchups neutres"
+          onEdit={openMatchupEditor}
+          onRemove={handleRemoveMatchup}
+        />
+        <MatchupSummarySection
+          group="favorable"
+          heroesById={heroesById}
+          matchups={matchupSummary.favorable}
+          title="Matchups favorables"
           onEdit={openMatchupEditor}
           onRemove={handleRemoveMatchup}
         />
@@ -600,35 +680,50 @@ export function HeroDetail({ heroId }: { heroId: string }) {
                 className="min-h-11 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-[var(--text-primary)]"
                 value={matchupFilter}
                 onChange={(event) =>
-                  setMatchupFilter(event.target.value as MatchupFilter)
+                  setMatchupFilter(event.target.value as MatchupCategoryFilter)
                 }
               >
-                <option value="all">Tous</option>
-                <option value="avoid">À éviter</option>
-                <option value="neutral">Neutres</option>
-                <option value="favorable">Favorables</option>
-                <option value="unrated">Non évalués</option>
+                <option value="all">Tous ({matchupCounts.all})</option>
+                <option value="avoid">À éviter ({matchupCounts.avoid})</option>
+                <option value="neutral">
+                  Neutres ({matchupCounts.neutral})
+                </option>
+                <option value="favorable">
+                  Favorables ({matchupCounts.favorable})
+                </option>
+                <option value="unrated">
+                  Non évalués ({matchupCounts.unrated})
+                </option>
               </select>
             </label>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {catalogueOpponents.map((opponent) => {
-              const matchup = matchupsByOpponent.get(opponent.id);
+            {catalogueOpponents.map((item) => {
+              const persistedScore = item.matchup?.score ?? null;
+              const draftScore =
+                draftScores[item.hero.id] !== undefined
+                  ? draftScores[item.hero.id]
+                  : persistedScore;
+              const saveState = matchupSaveStates[item.hero.id] ?? 'idle';
               return (
                 <MatchupCatalogueCard
-                  key={opponent.id}
-                  editing={editingOpponentId === opponent.id}
-                  hero={opponent}
-                  matchup={matchup ?? null}
-                  pendingScore={pendingMatchupScore}
+                  key={item.hero.id}
+                  draftScore={draftScore}
+                  editing={editingOpponentId === item.hero.id}
+                  errorMessage={matchupErrors[item.hero.id] ?? ''}
+                  hero={item.hero}
+                  matchup={item.matchup}
+                  persistedScore={persistedScore}
+                  saveState={saveState}
                   onCancel={() => {
                     setEditingOpponentId(null);
-                    setPendingMatchupScore(null);
                   }}
-                  onEdit={() => openMatchupEditor(opponent.id)}
-                  onPendingScoreChange={setPendingMatchupScore}
-                  onRemove={() => handleRemoveMatchup(opponent.id)}
-                  onSave={handleSaveMatchup}
+                  onDraftScoreChange={(score) =>
+                    handleDraftScoreChange(item.hero.id, score)
+                  }
+                  onEdit={() => openMatchupEditor(item.hero.id)}
+                  onRemove={() => handleRemoveMatchup(item.hero.id)}
+                  onSave={() => handleSaveMatchup(item.hero.id)}
                 />
               );
             })}
@@ -787,7 +882,7 @@ function FightEntryWindowControl({
   return (
     <div className="grid gap-4">
       <p className="text-sm font-semibold text-[var(--text-primary)]">
-        Fenetre choisie : {formatMinuteRange(start, end)}
+        Fenêtre choisie : {formatMinuteRange(start, end)}
       </p>
       <label className="grid gap-2 text-sm font-medium text-[var(--text-primary)]">
         Début le plus tôt : {formatMinute(start)}
@@ -831,12 +926,18 @@ function MatchupSummarySection({
   onRemove,
 }: {
   title: string;
-  group: HeroMatchupGroup;
+  group: MatchupCategory;
   matchups: PlayerHeroMatchup[];
-  heroesById: Map<string, { id: string; displayName: string }>;
+  heroesById: Map<string, Hero>;
   onEdit: (opponentHeroId: string) => void;
   onRemove: (opponentHeroId: string) => void;
 }) {
+  const matchupsByScore = new Map<HeroMatchupScore, PlayerHeroMatchup[]>();
+  for (const matchup of matchups) {
+    const current = matchupsByScore.get(matchup.score) ?? [];
+    matchupsByScore.set(matchup.score, [...current, matchup]);
+  }
+
   return (
     <section className="grid gap-3">
       <h3 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -847,37 +948,55 @@ function MatchupSummarySection({
           Aucun matchup dans ce groupe.
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {matchups.map((matchup) => {
-            const hero = heroesById.get(matchup.opponentHeroId);
+        <div className="grid gap-4">
+          {matchupScoreOrderByCategory[group].map((score) => {
+            const scoreMatchups = matchupsByScore.get(score) ?? [];
+            if (scoreMatchups.length === 0) {
+              return null;
+            }
             return (
-              <article
-                key={`${group}-${matchup.opponentHeroId}`}
-                className="grid gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-3"
-              >
-                <p className="font-semibold text-[var(--text-primary)]">
-                  {hero?.displayName ?? matchup.opponentHeroId}
-                </p>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {matchup.score}/6 - {matchupScoreLabels[matchup.score]}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="min-h-9 rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-primary)]"
-                    type="button"
-                    onClick={() => onEdit(matchup.opponentHeroId)}
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    className="min-h-9 rounded-md border border-[rgb(239_120_109_/_0.45)] px-3 py-1 text-sm text-[var(--danger)]"
-                    type="button"
-                    onClick={() => onRemove(matchup.opponentHeroId)}
-                  >
-                    Retirer
-                  </button>
+              <section key={`${group}-${score}`} className="grid gap-2">
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">
+                  {matchupScoreHeadings[score]}
+                </h4>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {sortMatchupCards(scoreMatchups, heroesById, group).map(
+                    (matchup) => {
+                      const hero = heroesById.get(matchup.opponentHeroId);
+                      return (
+                        <article
+                          key={`${group}-${matchup.opponentHeroId}`}
+                          className="grid gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-3"
+                        >
+                          <p className="font-semibold text-[var(--text-primary)]">
+                            {hero?.displayName ?? matchup.opponentHeroId}
+                          </p>
+                          <p className="text-sm text-[var(--text-secondary)]">
+                            {matchup.score}/6 -{' '}
+                            {matchupScoreLabels[matchup.score]}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              className="min-h-9 rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-primary)]"
+                              type="button"
+                              onClick={() => onEdit(matchup.opponentHeroId)}
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              className="min-h-9 rounded-md border border-[rgb(239_120_109_/_0.45)] px-3 py-1 text-sm text-[var(--danger)]"
+                              type="button"
+                              onClick={() => onRemove(matchup.opponentHeroId)}
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    },
+                  )}
                 </div>
-              </article>
+              </section>
             );
           })}
         </div>
@@ -890,9 +1009,12 @@ function MatchupCatalogueCard({
   hero,
   matchup,
   editing,
-  pendingScore,
+  draftScore,
+  persistedScore,
+  saveState,
+  errorMessage,
   onEdit,
-  onPendingScoreChange,
+  onDraftScoreChange,
   onSave,
   onCancel,
   onRemove,
@@ -900,13 +1022,22 @@ function MatchupCatalogueCard({
   hero: Hero;
   matchup: PlayerHeroMatchup | null;
   editing: boolean;
-  pendingScore: HeroMatchupScore | null;
+  draftScore: HeroMatchupScore | null;
+  persistedScore: HeroMatchupScore | null;
+  saveState: MatchupSaveState;
+  errorMessage: string;
   onEdit: () => void;
-  onPendingScoreChange: (score: HeroMatchupScore) => void;
+  onDraftScoreChange: (score: HeroMatchupScore) => void;
   onSave: () => void;
   onCancel: () => void;
   onRemove: () => void;
 }) {
+  const dirty = draftScore !== persistedScore;
+  const resolvedSaveState = saveState === 'idle' && dirty ? 'dirty' : saveState;
+  const saving = resolvedSaveState === 'saving';
+  const saveLabel = getMatchupSaveButtonLabel(resolvedSaveState, matchup);
+  const statusText = getMatchupStatusText(resolvedSaveState, matchup);
+
   return (
     <article className="grid gap-3 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] p-3">
       <div className="flex gap-3">
@@ -922,6 +1053,17 @@ function MatchupCatalogueCard({
           </p>
         </div>
       </div>
+      <p
+        className="text-sm font-medium text-[var(--text-primary)]"
+        aria-live="polite"
+      >
+        {statusText}
+      </p>
+      {errorMessage ? (
+        <p className="text-sm text-[var(--danger)]" role="alert">
+          {errorMessage}
+        </p>
+      ) : null}
       {editing ? (
         <div className="grid gap-3">
           <fieldset className="grid gap-2">
@@ -931,39 +1073,40 @@ function MatchupCatalogueCard({
                 <label
                   key={score}
                   className={`grid min-h-14 cursor-pointer place-items-center rounded-md border px-2 py-1 text-center text-sm ${
-                    pendingScore === score
+                    draftScore === score
                       ? 'border-[var(--accent)] bg-[rgb(201_71_56_/_0.18)] text-[var(--text-primary)]'
                       : 'border-[var(--border)] text-[var(--text-secondary)]'
                   }`}
                 >
                   <input
-                    checked={pendingScore === score}
+                    checked={draftScore === score}
                     className="sr-only"
                     name={`matchup-${hero.id}`}
                     type="radio"
-                    onChange={() => onPendingScoreChange(score)}
+                    onChange={() => onDraftScoreChange(score)}
                   />
                   {score}/6
                 </label>
               ))}
             </div>
           </fieldset>
-          {pendingScore !== null ? (
+          {draftScore !== null ? (
             <p className="text-sm text-[var(--text-secondary)]">
-              {matchupScoreLabels[pendingScore]}
+              {matchupScoreLabels[draftScore]}
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             <button
               className="min-h-9 rounded-md bg-[var(--accent)] px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
-              disabled={pendingScore === null}
+              disabled={draftScore === null || saving || !dirty}
               type="button"
               onClick={onSave}
             >
-              Enregistrer
+              {saveLabel}
             </button>
             <button
               className="min-h-9 rounded-md border border-[var(--border)] px-3 py-1 text-sm text-[var(--text-primary)]"
+              disabled={saving}
               type="button"
               onClick={onCancel}
             >
@@ -983,16 +1126,55 @@ function MatchupCatalogueCard({
           {matchup ? (
             <button
               className="min-h-9 rounded-md border border-[rgb(239_120_109_/_0.45)] px-3 py-1 text-sm text-[var(--danger)]"
+              disabled={saving}
               type="button"
               onClick={onRemove}
             >
-              Retirer
+              {saving ? 'Suppression...' : 'Retirer'}
             </button>
           ) : null}
         </div>
       )}
     </article>
   );
+}
+
+function getMatchupSaveButtonLabel(
+  state: MatchupSaveState,
+  matchup: PlayerHeroMatchup | null,
+): string {
+  if (state === 'saving') {
+    return 'Enregistrement...';
+  }
+  if (state === 'saved') {
+    return matchup ? 'Enregistré ✓' : 'Enregistrer';
+  }
+  if (state === 'error') {
+    return "Échec de l'enregistrement";
+  }
+  if (state === 'dirty') {
+    return 'Enregistrer';
+  }
+  return matchup ? 'Enregistré' : 'Enregistrer';
+}
+
+function getMatchupStatusText(
+  state: MatchupSaveState,
+  matchup: PlayerHeroMatchup | null,
+): string {
+  if (state === 'saving') {
+    return 'Enregistrement en cours...';
+  }
+  if (state === 'saved') {
+    return matchup ? 'Enregistré ✓' : 'Évaluation retirée ✓';
+  }
+  if (state === 'error') {
+    return "Échec de l'enregistrement";
+  }
+  if (state === 'dirty') {
+    return 'Modification non enregistrée';
+  }
+  return matchup ? 'Enregistré' : 'Non évalué';
 }
 
 function RadarChart({ series }: { series: RadarSeries[] }) {
@@ -1158,7 +1340,7 @@ function MetricValueTable({
 function sortMatchupCards(
   matchups: PlayerHeroMatchup[],
   heroesById: Map<string, Hero>,
-  group: HeroMatchupGroup,
+  group: MatchupCategory,
 ): PlayerHeroMatchup[] {
   return [...matchups].sort((left, right) => {
     if (group === 'avoid' && left.score !== right.score) {
@@ -1178,14 +1360,6 @@ function sortMatchupCards(
         ) ?? left.opponentHeroId.localeCompare(right.opponentHeroId)
     );
   });
-}
-
-function normalizeMatchupSearch(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .trim()
-    .toLocaleLowerCase();
 }
 
 function formatMinuteRange(start: number, end: number): string {

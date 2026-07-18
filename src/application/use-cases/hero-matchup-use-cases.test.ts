@@ -4,6 +4,7 @@ import { InMemoryPlayerHeroRepository } from '@/infrastructure/repositories/in-m
 import { AddHeroToPlayerPool } from './add-hero-to-player-pool';
 import {
   assertValidMatchupInput,
+  getMatchupCategory,
   groupHeroMatchups,
   SaveHeroMatchup,
 } from './hero-matchup-use-cases';
@@ -64,18 +65,28 @@ describe('hero matchup use cases', () => {
     ).toBe(6);
   });
 
-  it('groups 0-2 as avoid, 3 neutral, and 4-6 favorable', () => {
+  it('uses the canonical 0-1 avoid, 2-4 neutral, and 5-6 favorable thresholds', () => {
+    expect(getMatchupCategory(0)).toBe('avoid');
+    expect(getMatchupCategory(1)).toBe('avoid');
+    expect(getMatchupCategory(2)).toBe('neutral');
+    expect(getMatchupCategory(3)).toBe('neutral');
+    expect(getMatchupCategory(4)).toBe('neutral');
+    expect(getMatchupCategory(5)).toBe('favorable');
+    expect(getMatchupCategory(6)).toBe('favorable');
+
     const grouped = groupHeroMatchups([
       matchup('axe', 0),
-      matchup('bane', 3),
-      matchup('chen', 6),
+      matchup('bane', 2),
+      matchup('chen', 4),
+      matchup('dazzle', 6),
     ]);
     expect(grouped.avoid.map((item) => item.opponentHeroId)).toEqual(['axe']);
     expect(grouped.neutral.map((item) => item.opponentHeroId)).toEqual([
       'bane',
+      'chen',
     ]);
     expect(grouped.favorable.map((item) => item.opponentHeroId)).toEqual([
-      'chen',
+      'dazzle',
     ]);
   });
 });
@@ -105,7 +116,7 @@ async function addHero(
   });
 }
 
-function matchup(opponentHeroId: string, score: 0 | 3 | 6) {
+function matchup(opponentHeroId: string, score: 0 | 2 | 4 | 6) {
   return {
     playerId: 'player-1',
     heroId: 'hero',

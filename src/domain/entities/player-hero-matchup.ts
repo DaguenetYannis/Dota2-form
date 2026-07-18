@@ -11,17 +11,20 @@ export interface PlayerHeroMatchup {
 
 export const heroMatchupScores = [0, 1, 2, 3, 4, 5, 6] as const;
 
-export type HeroMatchupGroup = 'avoid' | 'neutral' | 'favorable';
+export type MatchupCategory = 'avoid' | 'neutral' | 'favorable';
+export type HeroMatchupGroup = MatchupCategory;
 
-export function getHeroMatchupGroup(score: HeroMatchupScore): HeroMatchupGroup {
-  if (score <= 2) {
+export function getMatchupCategory(score: HeroMatchupScore): MatchupCategory {
+  if (score <= 1) {
     return 'avoid';
   }
-  if (score === 3) {
+  if (score <= 4) {
     return 'neutral';
   }
   return 'favorable';
 }
+
+export const getHeroMatchupGroup = getMatchupCategory;
 
 export function isHeroMatchupScore(value: unknown): value is HeroMatchupScore {
   return (

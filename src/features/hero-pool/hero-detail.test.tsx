@@ -93,9 +93,11 @@ describe('HeroDetail', () => {
       await screen.findByRole('heading', { name: 'Axe' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/0\/9/i)).toBeInTheDocument();
-    expect(screen.getByText(/Dépendance au farm/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Dépendance au farm/i).length).toBeGreaterThan(
+      0,
+    );
     expect(
-      screen.getByText(/Une valeur elevee represente/i),
+      screen.getByText(/Une valeur .lev.e repr.sente/i),
     ).toBeInTheDocument();
 
     await user.click(metricRadio(/te d.placer/i, /5 La mobilit/i));
@@ -109,7 +111,7 @@ describe('HeroDetail', () => {
     await user.click(metricRadio(/engagement favorable/i, /5 L'initiation/i));
 
     await user.click(
-      screen.getByRole('button', { name: /enregistrer l'.valuation/i }),
+      screen.getByRole('button', { name: /enregistrer l.*valuation/i }),
     );
 
     expect(
@@ -134,6 +136,60 @@ describe('HeroDetail', () => {
     expect(await screen.findByText(/S.*rie 2: Bane/i)).toBeInTheDocument();
     expect(screen.getAllByRole('table').at(-1)).toHaveTextContent('Bane');
   });
+
+  it('saves score 0 matchups with visible feedback and updates filters immediately', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AppStateProvider>
+        <ResolvedHeroDetail />
+      </AppStateProvider>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Axe' }),
+    ).toBeInTheDocument();
+
+    let baneCard = matchupCard('Bane');
+    expect(within(baneCard).getAllByText(/non/i).length).toBeGreaterThan(0);
+    await user.click(within(baneCard).getByRole('button', { name: /valuer/i }));
+    await user.click(within(baneCard).getByRole('radio', { name: /0\/6/i }));
+    expect(
+      within(baneCard).getByRole('button', { name: /^Enregistrer$/i }),
+    ).toBeEnabled();
+    await user.click(
+      within(baneCard).getByRole('button', { name: /^Enregistrer$/i }),
+    );
+    expect(
+      await within(baneCard).findByText((content, element) => {
+        return (
+          element?.tagName.toLowerCase() === 'p' && /^Enregistr/.test(content)
+        );
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      within(baneCard).getByRole('button', { name: /annuler/i }),
+    );
+
+    await user.selectOptions(screen.getByLabelText(/filtre/i), 'avoid');
+    baneCard = matchupCard('Bane');
+    expect(baneCard).toHaveTextContent('0/6');
+
+    await user.selectOptions(screen.getByLabelText(/filtre/i), 'unrated');
+    expect(
+      screen.queryByRole('heading', { name: 'Bane' }),
+    ).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/filtre/i), 'all');
+    baneCard = matchupCard('Bane');
+    await user.click(
+      within(baneCard).getByRole('button', { name: /retirer/i }),
+    );
+    expect(await within(baneCard).findByText(/retir/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/filtre/i), 'unrated');
+    expect(matchupCard('Bane')).toHaveTextContent(/Non/i);
+  });
 });
 
 function metricRadio(question: RegExp, name: RegExp) {
@@ -143,4 +199,11 @@ function metricRadio(question: RegExp, name: RegExp) {
   const fieldset = legend?.closest('fieldset');
   expect(fieldset).not.toBeNull();
   return within(fieldset as HTMLElement).getByRole('radio', { name });
+}
+
+function matchupCard(heroName: string) {
+  const heading = screen.getAllByRole('heading', { name: heroName }).at(-1);
+  const card = heading?.closest('article');
+  expect(card).not.toBeNull();
+  return card as HTMLElement;
 }

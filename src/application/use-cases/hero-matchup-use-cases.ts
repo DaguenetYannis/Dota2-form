@@ -1,7 +1,7 @@
 import type { Clock } from '@/application/services/clock';
 import type { Hero } from '@/domain/entities/hero';
 import {
-  getHeroMatchupGroup,
+  getMatchupCategory,
   isHeroMatchupScore,
   type HeroMatchupGroup,
   type HeroMatchupScore,
@@ -111,13 +111,13 @@ export function groupHeroMatchups(
 ): Record<HeroMatchupGroup, PlayerHeroMatchup[]> {
   return {
     avoid: matchups.filter(
-      (matchup) => getHeroMatchupGroup(matchup.score) === 'avoid',
+      (matchup) => getMatchupCategory(matchup.score) === 'avoid',
     ),
     neutral: matchups.filter(
-      (matchup) => getHeroMatchupGroup(matchup.score) === 'neutral',
+      (matchup) => getMatchupCategory(matchup.score) === 'neutral',
     ),
     favorable: matchups.filter(
-      (matchup) => getHeroMatchupGroup(matchup.score) === 'favorable',
+      (matchup) => getMatchupCategory(matchup.score) === 'favorable',
     ),
   };
 }
@@ -145,3 +145,4 @@ export function sortMatchupsForSummary(
     return compareHeroesByDisplayName(leftHero, rightHero);
   });
 }
+export { getMatchupCategory };
