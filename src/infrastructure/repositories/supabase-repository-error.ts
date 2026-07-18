@@ -1,5 +1,5 @@
 export class SupabaseRepositoryNotImplementedError extends Error {
-  readonly userMessage = 'La persistance Supabase n’est pas encore prête.';
+  readonly userMessage = "La persistance Supabase n'est pas encore prête.";
 
   constructor(repositoryName: string) {
     super(
@@ -27,31 +27,37 @@ export class SupabaseRepositoryError extends Error {
     const context = typeof error === 'string' ? { message: error } : error;
     const codeSuffix = context.code ? ` [${context.code}]` : '';
 
-    super(`${repositoryName}.${operation} failed${codeSuffix}: ${context.message}`);
+    super(
+      `${repositoryName}.${operation} failed${codeSuffix}: ${context.message}`,
+    );
     this.name = 'SupabaseRepositoryError';
     this.userMessage = toUserMessage(context);
   }
 }
 
 function toUserMessage(error: SupabaseAdapterErrorLike): string {
-  if (error.code === '42P01') {
-    return 'La base Supabase n’est pas encore initialisée.';
+  const message = error.message.toLowerCase();
+
+  if (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    message.includes('schema cache') ||
+    message.includes('could not find the table')
+  ) {
+    return "La base Supabase n'est pas encore initialisée.";
   }
 
-  if (error.code === '42501' || error.message.toLowerCase().includes('rls')) {
-    return 'Supabase refuse l’enregistrement pour le moment.';
+  if (error.code === '42501' || message.includes('rls')) {
+    return "Supabase refuse l'enregistrement pour le moment.";
   }
 
   if (error.code === '23505') {
     return 'Ce pseudo existe déjà. Réessaie en rechargeant la page.';
   }
 
-  if (
-    error.message.toLowerCase().includes('failed to fetch') ||
-    error.message.toLowerCase().includes('network')
-  ) {
+  if (message.includes('failed to fetch') || message.includes('network')) {
     return 'Impossible de joindre Supabase pour le moment.';
   }
 
-  return 'Erreur lors de l’enregistrement.';
+  return "Erreur lors de l'enregistrement.";
 }

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -38,7 +38,7 @@ function ResolvedHeroPoolManager() {
         type="button"
         onClick={async () => setSnapshotText(JSON.stringify(await snapshot()))}
       >
-        Inspecter les donnÃ©es
+        Inspecter les données
       </button>
       <button
         type="button"

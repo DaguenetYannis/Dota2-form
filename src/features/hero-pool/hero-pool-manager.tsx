@@ -145,7 +145,7 @@ export function HeroPoolManager() {
           Hero pool
         </h1>
         <p className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text-secondary)]">
-          CrÃ©e d&apos;abord un profil joueur avant d&apos;ajouter des hÃ©ros.
+          Crée d&apos;abord un profil joueur avant d&apos;ajouter des héros.
         </p>
       </section>
     );
@@ -311,7 +311,7 @@ export function HeroPoolManager() {
             Hero pool
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            DÃ©couvre, classe et organise les hÃ©ros que tu veux jouer.
+            Découvre, classe et organise les héros que tu veux jouer.
           </p>
         </div>
         <SaveStatus state={status} />
@@ -334,7 +334,7 @@ export function HeroPoolManager() {
         />
         <ViewTab
           active={activeView === 'categories'}
-          label="Mes catÃ©gories"
+          label="Mes catégories"
           onClick={() => setActiveView('categories')}
         />
       </div>
@@ -464,8 +464,8 @@ export function HeroPoolManager() {
         <CategoryNameDialog
           error={categoryFormError}
           name={createCategoryName}
-          submitLabel="CrÃ©er"
-          title="Nouvelle catÃ©gorie"
+          submitLabel="Créer"
+          title="Nouvelle catégorie"
           onCancel={() => {
             setCreateCategoryOpen(false);
             setCreateCategoryName('');
@@ -481,7 +481,7 @@ export function HeroPoolManager() {
           error={categoryFormError}
           name={renameCategoryName}
           submitLabel="Enregistrer"
-          title="Renommer la catÃ©gorie"
+          title="Renommer la catégorie"
           onCancel={() => {
             setRenameCategory(null);
             setRenameCategoryName('');
@@ -880,7 +880,7 @@ function AddHeroDialog({
           <HeroThumbnail hero={hero} size="small" className="rounded-md" />
           <div>
             <h2 className="text-xl font-bold text-[var(--text-primary)]">
-              Ajouter {hero.displayName} Ã  ton hero pool
+              Ajouter {hero.displayName} à ton hero pool
             </h2>
             <p className="text-sm text-[var(--text-secondary)]">
               Dans quel niveau de confort veux-tu le placer ?
@@ -922,7 +922,7 @@ function AddHeroDialog({
         {categories.length > 0 ? (
           <fieldset className="grid gap-2">
             <legend className="text-sm font-semibold text-[var(--text-primary)]">
-              CatÃ©gories optionnelles
+              Catégories optionnelles
             </legend>
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
@@ -1006,7 +1006,7 @@ function ComfortView({
             </div>
             {tierHeroes.length === 0 ? (
               <p className="text-sm text-[var(--text-secondary)]">
-                Aucun hÃ©ros dans ce niveau.
+                Aucun héros dans ce niveau.
               </p>
             ) : (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1077,7 +1077,7 @@ function PoolHeroCard({
         className="min-h-10 rounded-md border border-[var(--border)] px-3 py-2 text-center text-sm font-medium text-[var(--text-primary)] hover:border-[var(--accent)]"
         href={`/player/heroes/${playerHero.heroId}`}
       >
-        Ouvrir le dÃ©tail
+        Ouvrir le détail
       </Link>
       <label className="grid gap-2 text-sm font-medium text-[var(--text-primary)]">
         Changer le niveau de confort
@@ -1635,7 +1635,7 @@ function validateCategoryName(
 function EmptyPool() {
   return (
     <p className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text-secondary)]">
-      Aucun hÃ©ros dans le pool pour le moment.
+      Aucun héros dans le pool pour le moment.
     </p>
   );
 }
