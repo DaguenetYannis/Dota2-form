@@ -21,6 +21,16 @@ export interface PlayerHero {
   preferredPlaystyles: IndividualPlaystyleId[];
   requiredAlliedFeatures: string[];
   personalNotes: string;
+  fightEntryStartMinute: number | null;
+  fightEntryEndMinute: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export function isCorePlayerHero(
+  playerHero: Pick<PlayerHero, 'roles'>,
+): boolean {
+  return playerHero.roles.some((role) =>
+    ['position_1', 'position_2', 'position_3'].includes(role),
+  );
 }

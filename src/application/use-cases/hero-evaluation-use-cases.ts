@@ -139,7 +139,7 @@ export function assertValidMetrics(metrics: HeroMetricMap): void {
 
   const invalidMetric = heroMetricIds.find((metricId) => {
     const value = metrics[metricId];
-    return value !== null && ![1, 2, 3, 4, 5].includes(value);
+    return value !== null && ![0, 1, 2, 3, 4, 5].includes(value);
   });
   if (invalidMetric) {
     throw new DomainValidationError([

@@ -25,11 +25,7 @@ export class SupabasePlayerHeroRepository implements PlayerHeroRepository {
       .single();
 
     if (error) {
-      throw new SupabaseRepositoryError(
-        'PlayerHeroRepository',
-        'add',
-        error,
-      );
+      throw new SupabaseRepositoryError('PlayerHeroRepository', 'add', error);
     }
 
     return toPlayerHero(data);
@@ -134,11 +130,7 @@ export class SupabasePlayerHeroRepository implements PlayerHeroRepository {
       .order('hero_order', { ascending: true });
 
     if (error) {
-      throw new SupabaseRepositoryError(
-        'PlayerHeroRepository',
-        'list',
-        error,
-      );
+      throw new SupabaseRepositoryError('PlayerHeroRepository', 'list', error);
     }
 
     return data.map(toPlayerHero);
@@ -153,11 +145,7 @@ export function toPlayerHero(row: PlayerHeroRow): PlayerHero {
     playerId: row.player_id,
     heroId: row.hero_id,
     order: row.hero_order,
-    roles: mapStringLiteralArray(
-      row.roles,
-      roleIds,
-      'player_heroes.roles',
-    ),
+    roles: mapStringLiteralArray(row.roles, roleIds, 'player_heroes.roles'),
     poolTier: mapStringLiteral(
       row.pool_tier,
       poolTierIds,
@@ -180,6 +168,8 @@ export function toPlayerHero(row: PlayerHeroRow): PlayerHero {
     ),
     requiredAlliedFeatures: row.required_allied_features,
     personalNotes: row.personal_notes,
+    fightEntryStartMinute: row.fight_entry_start_minute ?? null,
+    fightEntryEndMinute: row.fight_entry_end_minute ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -204,6 +194,8 @@ export function toPlayerHeroRow(
     preferred_playstyles: playerHero.preferredPlaystyles,
     required_allied_features: playerHero.requiredAlliedFeatures,
     personal_notes: playerHero.personalNotes,
+    fight_entry_start_minute: playerHero.fightEntryStartMinute,
+    fight_entry_end_minute: playerHero.fightEntryEndMinute,
     created_at: playerHero.createdAt,
     updated_at: playerHero.updatedAt,
   };

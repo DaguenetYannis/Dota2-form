@@ -26,6 +26,7 @@ import {
 } from '@/domain/value-objects/vocabularies';
 import { useAppState } from '@/lib/app-state';
 import { poolTierDescriptions, poolTierLabels } from '@/lib/labels';
+import { sortHeroesByDisplayName } from '@/lib/sort-heroes';
 
 type HeroPoolView = 'catalogue' | 'comfort' | 'categories';
 
@@ -200,10 +201,7 @@ export function HeroPoolManager() {
   }
 
   async function handleCreateCategory() {
-    const validation = validateCategoryName(
-      createCategoryName,
-      heroCategories,
-    );
+    const validation = validateCategoryName(createCategoryName, heroCategories);
     if (validation) {
       setCategoryFormError(validation);
       return;
@@ -742,7 +740,11 @@ function CatalogueView({
                     : 'border-[var(--border)] bg-[var(--surface-elevated)]'
                 }`}
               >
-                <HeroThumbnail hero={hero} size="large" className="rounded-md" />
+                <HeroThumbnail
+                  hero={hero}
+                  size="large"
+                  className="rounded-md"
+                />
                 <div>
                   <h2 className="font-semibold text-[var(--text-primary)]">
                     {hero.displayName}
@@ -985,8 +987,9 @@ function ComfortView({
   return (
     <div className="grid gap-5">
       {poolTierIds.map((tierId) => {
-        const tierHeroes = heroPool.filter(
-          (playerHero) => playerHero.poolTier === tierId,
+        const tierHeroes = sortHeroesByDisplayName(
+          heroPool.filter((playerHero) => playerHero.poolTier === tierId),
+          (playerHero) => heroesById.get(playerHero.heroId),
         );
         return (
           <section
@@ -1152,8 +1155,11 @@ function CategoriesView({
             const assignedHeroIds = playerHeroCategories
               .filter((assignment) => assignment.categoryId === category.id)
               .map((assignment) => assignment.heroId);
-            const assignedHeroes = heroPool.filter((playerHero) =>
-              assignedHeroIds.includes(playerHero.heroId),
+            const assignedHeroes = sortHeroesByDisplayName(
+              heroPool.filter((playerHero) =>
+                assignedHeroIds.includes(playerHero.heroId),
+              ),
+              (playerHero) => heroesById.get(playerHero.heroId),
             );
 
             return (
@@ -1417,18 +1423,21 @@ function CategoryAssignmentDialog({
   onToggleHero: (heroId: string) => void;
 }) {
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const filteredPool = heroPool
-    .filter((playerHero) =>
-      tierFilter === 'all' ? true : playerHero.poolTier === tierFilter,
-    )
-    .filter((playerHero) => {
-      const hero = heroesById.get(playerHero.heroId);
-      return normalizedQuery
-        ? (hero?.displayName ?? playerHero.heroId)
-            .toLocaleLowerCase()
-            .includes(normalizedQuery)
-        : true;
-    });
+  const filteredPool = sortHeroesByDisplayName(
+    heroPool
+      .filter((playerHero) =>
+        tierFilter === 'all' ? true : playerHero.poolTier === tierFilter,
+      )
+      .filter((playerHero) => {
+        const hero = heroesById.get(playerHero.heroId);
+        return normalizedQuery
+          ? (hero?.displayName ?? playerHero.heroId)
+              .toLocaleLowerCase()
+              .includes(normalizedQuery)
+          : true;
+      }),
+    (playerHero) => heroesById.get(playerHero.heroId),
+  );
 
   return (
     <div
@@ -1511,7 +1520,11 @@ function CategoryAssignmentDialog({
                       onChange={() => onToggleHero(playerHero.heroId)}
                     />
                     {hero ? (
-                      <HeroThumbnail hero={hero} size="small" className="rounded" />
+                      <HeroThumbnail
+                        hero={hero}
+                        size="small"
+                        className="rounded"
+                      />
                     ) : null}
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-[var(--text-primary)]">

@@ -279,6 +279,8 @@ describe('hero pool reorder use cases', () => {
         preferredPlaystyles: ['initiator'],
         requiredAlliedFeatures: [],
         personalNotes: '',
+        fightEntryStartMinute: null,
+        fightEntryEndMinute: null,
         createdAt: now(),
         updatedAt: now(),
       };
@@ -333,6 +335,8 @@ describe('hero pool reorder use cases', () => {
         preferredPlaystyles: ['initiator'],
         requiredAlliedFeatures: [],
         personalNotes: '',
+        fightEntryStartMinute: null,
+        fightEntryEndMinute: null,
         createdAt: now(),
         updatedAt: now(),
       };
@@ -364,6 +368,8 @@ describe('hero pool reorder use cases', () => {
         preferredPlaystyles: ['initiator'],
         requiredAlliedFeatures: [],
         personalNotes: '',
+        fightEntryStartMinute: null,
+        fightEntryEndMinute: null,
         createdAt: now(),
         updatedAt: now(),
       };
@@ -395,6 +401,8 @@ describe('hero pool reorder use cases', () => {
         preferredPlaystyles: ['initiator'],
         requiredAlliedFeatures: [],
         personalNotes: '',
+        fightEntryStartMinute: null,
+        fightEntryEndMinute: null,
         createdAt: now(),
         updatedAt: now(),
       };

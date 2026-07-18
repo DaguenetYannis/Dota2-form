@@ -86,6 +86,8 @@ export interface Database {
           preferred_playstyles: string[];
           required_allied_features: string[];
           personal_notes: string;
+          fight_entry_start_minute: number | null;
+          fight_entry_end_minute: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -105,6 +107,8 @@ export interface Database {
           preferred_playstyles: string[];
           required_allied_features: string[];
           personal_notes: string;
+          fight_entry_start_minute: number | null;
+          fight_entry_end_minute: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -207,6 +211,36 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'player_hero_evaluations_player_id_hero_id_fkey';
+            columns: ['player_id', 'hero_id'];
+            isOneToOne: false;
+            referencedRelation: 'player_heroes';
+            referencedColumns: ['player_id', 'hero_id'];
+          },
+        ];
+      };
+      player_hero_matchups: {
+        Row: {
+          player_id: string;
+          hero_id: string;
+          opponent_hero_id: string;
+          score: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          player_id: string;
+          hero_id: string;
+          opponent_hero_id: string;
+          score: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Update: Partial<
+          Database['public']['Tables']['player_hero_matchups']['Insert']
+        >;
+        Relationships: [
+          {
+            foreignKeyName: 'player_hero_matchups_player_id_hero_id_fkey';
             columns: ['player_id', 'hero_id'];
             isOneToOne: false;
             referencedRelation: 'player_heroes';

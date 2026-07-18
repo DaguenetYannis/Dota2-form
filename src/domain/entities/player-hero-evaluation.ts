@@ -27,7 +27,7 @@ export const heroMetricIds = [
 export type LegacyHeroMetricId = (typeof legacyHeroMetricIds)[number];
 export type HeroMetricV2Id = (typeof heroMetricIds)[number];
 export type HeroMetricId = HeroMetricV2Id;
-export type HeroMetricScore = 1 | 2 | 3 | 4 | 5;
+export type HeroMetricScore = 0 | 1 | 2 | 3 | 4 | 5;
 export type HeroMetricValue = HeroMetricScore | null;
 
 export type LegacyHeroMetricMap = Record<LegacyHeroMetricId, HeroMetricValue>;

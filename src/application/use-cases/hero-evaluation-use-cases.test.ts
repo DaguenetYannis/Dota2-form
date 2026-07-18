@@ -23,7 +23,7 @@ const now = () => '2026-01-01T00:00:00.000Z';
 const nextId = () => 'player-hero-1';
 
 const completeMetrics = {
-  mobility: 5,
+  mobility: 0,
   hero_damage: 4,
   farm_dependency: 3,
   building_damage: 2,
@@ -132,7 +132,7 @@ describe('hero evaluation use cases', () => {
       heroMetricIds,
     );
     expect(series?.points.map((point) => point.value)).toEqual([
-      5, 4, 3, 2, 1, 2, 3, 4, 5,
+      0, 4, 3, 2, 1, 2, 3, 4, 5,
     ]);
 
     expect(
@@ -148,6 +148,18 @@ describe('hero evaluation use cases', () => {
         'Axe',
       ),
     ).toBeNull();
+  });
+
+  it('treats radar score 0 as answered while null remains unanswered', () => {
+    const empty = createEmptyHeroMetricMap();
+    const partial = { ...empty, mobility: 0 } as const;
+    expect(() => assertValidMetrics(partial)).not.toThrow();
+    expect(() =>
+      assertValidMetrics({ ...empty, mobility: -1 } as never),
+    ).toThrow();
+    expect(() =>
+      assertValidMetrics({ ...empty, mobility: 6 } as never),
+    ).toThrow();
   });
 });
 

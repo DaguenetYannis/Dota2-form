@@ -37,6 +37,8 @@ export class AddHeroToPlayerPool {
       ...input,
       id: this.idGenerator(),
       order: nextOrder,
+      fightEntryStartMinute: input.fightEntryStartMinute ?? null,
+      fightEntryEndMinute: input.fightEntryEndMinute ?? null,
       createdAt: now,
       updatedAt: now,
     });

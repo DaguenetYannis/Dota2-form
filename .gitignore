@@ -2,6 +2,7 @@ node_modules/
 .next/
 out/
 coverage/
+.supabase-backups/
 .env
 .env*.local
 *.tsbuildinfo

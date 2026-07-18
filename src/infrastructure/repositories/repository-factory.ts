@@ -7,6 +7,7 @@ import {
 } from './in-memory-hero-category-repository';
 import { InMemoryPlayerHeroRepository } from './in-memory-player-hero-repository';
 import { InMemoryPlayerHeroEvaluationRepository } from './in-memory-player-hero-evaluation-repository';
+import { InMemoryPlayerHeroMatchupRepository } from './in-memory-player-hero-matchup-repository';
 import { InMemoryPlayerPreferencesRepository } from './in-memory-player-preferences-repository';
 import { InMemoryPlayerQuestionnaireRepository } from './in-memory-player-questionnaire-repository';
 import { InMemoryPlayerRepository } from './in-memory-player-repository';
@@ -18,6 +19,7 @@ import {
 } from './supabase-hero-category-repository';
 import { SupabasePlayerHeroRepository } from './supabase-player-hero-repository';
 import { SupabasePlayerHeroEvaluationRepository } from './supabase-player-hero-evaluation-repository';
+import { SupabasePlayerHeroMatchupRepository } from './supabase-player-hero-matchup-repository';
 import { SupabasePlayerPreferencesRepository } from './supabase-player-preferences-repository';
 import { SupabasePlayerQuestionnaireRepository } from './supabase-player-questionnaire-repository';
 import { SupabasePlayerRepository } from './supabase-player-repository';
@@ -45,6 +47,7 @@ export function createInMemoryRepositories(): AppRepositories {
     heroes: new InMemoryHeroRepository(),
     playerHeroes: new InMemoryPlayerHeroRepository(),
     heroEvaluations: new InMemoryPlayerHeroEvaluationRepository(),
+    heroMatchups: new InMemoryPlayerHeroMatchupRepository(),
     heroCategories: new InMemoryHeroCategoryRepository(),
     playerHeroCategories: new InMemoryPlayerHeroCategoryRepository(),
     questionnaires: new InMemoryPlayerQuestionnaireRepository(),
@@ -62,6 +65,7 @@ export function createSupabaseRepositories(
     heroes: new SupabaseHeroRepository(client),
     playerHeroes: new SupabasePlayerHeroRepository(client),
     heroEvaluations: new SupabasePlayerHeroEvaluationRepository(client),
+    heroMatchups: new SupabasePlayerHeroMatchupRepository(client),
     heroCategories: new SupabaseHeroCategoryRepository(client),
     playerHeroCategories: new SupabasePlayerHeroCategoryRepository(client),
     questionnaires: new SupabasePlayerQuestionnaireRepository(client),

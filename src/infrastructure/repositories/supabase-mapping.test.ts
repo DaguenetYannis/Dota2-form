@@ -76,6 +76,8 @@ describe('Supabase database mappings', () => {
       preferredPlaystyles: ['initiator', 'frontliner'],
       requiredAlliedFeatures: ['save'],
       personalNotes: 'Blink timing matters.',
+      fightEntryStartMinute: 20,
+      fightEntryEndMinute: 25,
       createdAt: '2026-07-17T10:00:00.000Z',
       updatedAt: '2026-07-17T10:10:00.000Z',
     };
@@ -194,6 +196,12 @@ describe('Supabase database mappings', () => {
       toPlayerHeroEvaluation({
         ...toPlayerHeroEvaluationRow(evaluation),
         metrics: { ...evaluation.metrics, mobility: 0 },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      toPlayerHeroEvaluation({
+        ...toPlayerHeroEvaluationRow(evaluation),
+        metrics: { ...evaluation.metrics, mobility: 6 },
       }),
     ).toThrow('Invalid hero metric score');
   });

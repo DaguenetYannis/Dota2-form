@@ -8,6 +8,7 @@ import type {
   PoolTierId,
   PrimaryAttributeId,
 } from '@/domain/value-objects/vocabularies';
+import { compareHeroesByDisplayName } from '@/lib/sort-heroes';
 
 export type CataloguePoolScope = 'all' | 'pool';
 
@@ -75,10 +76,7 @@ export function filterHeroCatalogue({
         return false;
       }
 
-      if (
-        filters.poolScope === 'pool' &&
-        result.playerHero === null
-      ) {
+      if (filters.poolScope === 'pool' && result.playerHero === null) {
         return false;
       }
 
@@ -93,7 +91,9 @@ export function filterHeroCatalogue({
         if (!result.playerHero) {
           return false;
         }
-        if (!filters.selectedComfortTiers.includes(result.playerHero.poolTier)) {
+        if (
+          !filters.selectedComfortTiers.includes(result.playerHero.poolTier)
+        ) {
           return false;
         }
       }
@@ -102,7 +102,8 @@ export function filterHeroCatalogue({
         if (!result.playerHero) {
           return false;
         }
-        const categoryIds = categoryIdsByHeroId.get(result.hero.id) ?? new Set();
+        const categoryIds =
+          categoryIdsByHeroId.get(result.hero.id) ?? new Set();
         const matchesAtLeastOneCategory = filters.selectedCategoryIds.some(
           (categoryId) => categoryIds.has(categoryId),
         );
@@ -112,7 +113,8 @@ export function filterHeroCatalogue({
       }
 
       return true;
-    });
+    })
+    .sort((left, right) => compareHeroesByDisplayName(left.hero, right.hero));
 }
 
 export function removeInvalidCategoryFilters(

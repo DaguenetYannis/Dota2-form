@@ -11,11 +11,18 @@ import {
   validateRating,
   validateRoleIds,
 } from '@/domain/validation/validators';
+import { assertValidFightEntryWindow } from './player-hero-timing';
 
 export type PlayerHeroDraft = Omit<
   PlayerHero,
-  'id' | 'createdAt' | 'updatedAt' | 'order'
->;
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'order'
+  | 'fightEntryStartMinute'
+  | 'fightEntryEndMinute'
+> &
+  Partial<Pick<PlayerHero, 'fightEntryStartMinute' | 'fightEntryEndMinute'>>;
 
 export function assertValidPlayerHero(
   input: PlayerHeroDraft | PlayerHero,
@@ -38,4 +45,8 @@ export function assertValidPlayerHero(
   if (hasValidationErrors(errors)) {
     throw new DomainValidationError(errors);
   }
+  assertValidFightEntryWindow({
+    fightEntryStartMinute: input.fightEntryStartMinute ?? null,
+    fightEntryEndMinute: input.fightEntryEndMinute ?? null,
+  });
 }

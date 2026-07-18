@@ -116,9 +116,9 @@ describe('filterHeroCatalogue', () => {
   });
 
   it('removes stale category filters and formats French result counts', () => {
-    expect(removeInvalidCategoryFilters(['hunter', 'missing'], categories)).toEqual([
-      'hunter',
-    ]);
+    expect(
+      removeInvalidCategoryFilters(['hunter', 'missing'], categories),
+    ).toEqual(['hunter']);
     expect(formatCatalogueResultCount(1)).toBe(
       '1 h\u00e9ros correspond \u00e0 tes filtres',
     );
@@ -181,6 +181,8 @@ function playerHero(
     preferredPlaystyles: [],
     requiredAlliedFeatures: [],
     personalNotes: '',
+    fightEntryStartMinute: null,
+    fightEntryEndMinute: null,
     createdAt: '2026-07-17T00:00:00.000Z',
     updatedAt: '2026-07-17T00:00:00.000Z',
   };

@@ -203,6 +203,7 @@ function toMetricMap<T extends readonly string[]>(
 function isHeroMetricValue(value: Json | undefined): value is HeroMetricValue {
   return (
     value === null ||
+    value === 0 ||
     value === 1 ||
     value === 2 ||
     value === 3 ||
@@ -213,6 +214,11 @@ function isHeroMetricValue(value: Json | undefined): value is HeroMetricValue {
 
 export function isHeroMetricScore(value: unknown): value is HeroMetricScore {
   return (
-    value === 1 || value === 2 || value === 3 || value === 4 || value === 5
+    value === 0 ||
+    value === 1 ||
+    value === 2 ||
+    value === 3 ||
+    value === 4 ||
+    value === 5
   );
 }

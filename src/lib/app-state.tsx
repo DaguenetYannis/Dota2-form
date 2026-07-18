@@ -33,6 +33,11 @@ import {
   SaveHeroEvaluation,
 } from '@/application/use-cases/hero-evaluation-use-cases';
 import {
+  LoadHeroMatchups,
+  RemoveHeroMatchup,
+  SaveHeroMatchup,
+} from '@/application/use-cases/hero-matchup-use-cases';
+import {
   UpdatePlayerProfile,
   type UpdatePlayerProfileInput,
 } from '@/application/use-cases/update-player-profile';
@@ -50,6 +55,10 @@ import type {
   PlayerHeroEvaluation,
   PlayerHeroEvaluationV2,
 } from '@/domain/entities/player-hero-evaluation';
+import type {
+  HeroMatchupScore,
+  PlayerHeroMatchup,
+} from '@/domain/entities/player-hero-matchup';
 import type { PlayerPreferences } from '@/domain/entities/player-preferences';
 import { DomainValidationError } from '@/domain/validation/validation-error';
 import { isoClock } from '@/application/services/clock';
@@ -66,6 +75,7 @@ interface AppDataSnapshot {
   heroCategories: HeroCategory[];
   playerHeroCategories: PlayerHeroCategory[];
   heroEvaluations: PlayerHeroEvaluation[];
+  heroMatchups: PlayerHeroMatchup[];
   heroes: Hero[];
 }
 
@@ -76,6 +86,7 @@ interface AppStateValue {
   heroCategories: HeroCategory[];
   playerHeroCategories: PlayerHeroCategory[];
   heroEvaluations: PlayerHeroEvaluation[];
+  heroMatchups: PlayerHeroMatchup[];
   heroes: typeof heroFixture;
   error: string | null;
   resolvePlayer(pseudonym: string): Promise<Player | undefined>;
@@ -104,6 +115,13 @@ interface AppStateValue {
   ): Promise<LegacyPlayerHeroEvaluation | null>;
   saveHeroEvaluation(heroId: string, metrics: HeroMetricMap): Promise<boolean>;
   listCompleteHeroEvaluations(): Promise<PlayerHeroEvaluationV2[]>;
+  loadHeroMatchups(heroId: string): Promise<PlayerHeroMatchup[]>;
+  saveHeroMatchup(
+    heroId: string,
+    opponentHeroId: string,
+    score: HeroMatchupScore,
+  ): Promise<boolean>;
+  removeHeroMatchup(heroId: string, opponentHeroId: string): Promise<boolean>;
   snapshot(): Promise<AppDataSnapshot>;
 }
 
@@ -133,6 +151,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [heroEvaluations, setHeroEvaluations] = useState<
     PlayerHeroEvaluationV2[]
   >([]);
+  const [heroMatchups, setHeroMatchups] = useState<PlayerHeroMatchup[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const refreshHeroPool = useCallback(
@@ -169,6 +188,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [repositories.heroEvaluations],
   );
 
+  const refreshHeroMatchups = useCallback(
+    async (playerId: string) => {
+      const pool = await repositories.playerHeroes.listByPlayerId(playerId);
+      const lists = await Promise.all(
+        pool.map((playerHero) =>
+          repositories.heroMatchups.findByPlayerAndHero(
+            playerId,
+            playerHero.heroId,
+          ),
+        ),
+      );
+      setHeroMatchups(lists.flat());
+    },
+    [repositories.heroMatchups, repositories.playerHeroes],
+  );
+
   const capture = useCallback(
     async <T,>(operation: () => Promise<T>): Promise<T | undefined> => {
       try {
@@ -199,6 +234,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       heroCategories,
       playerHeroCategories,
       heroEvaluations,
+      heroMatchups,
       heroes: heroFixture,
       error,
       async resolvePlayer(pseudonym) {
@@ -223,6 +259,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             await refreshHeroPool(existing.id);
             await refreshHeroCategories(existing.id);
             await refreshHeroEvaluations(existing.id);
+            await refreshHeroMatchups(existing.id);
             return existing;
           }
 
@@ -243,6 +280,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           await refreshHeroPool(result.player.id);
           await refreshHeroCategories(result.player.id);
           await refreshHeroEvaluations(result.player.id);
+          await refreshHeroMatchups(result.player.id);
           return result.player;
         });
       },
@@ -259,6 +297,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           await refreshHeroPool(result.player.id);
           await refreshHeroCategories(result.player.id);
           await refreshHeroEvaluations(result.player.id);
+          await refreshHeroMatchups(result.player.id);
           return true;
         });
         return Boolean(result);
@@ -330,11 +369,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             repositories.playerHeroes,
             repositories.playerHeroCategories,
             repositories.heroEvaluations,
+            repositories.heroMatchups,
           ).execute(id);
           setHeroPool((items) => items.filter((item) => item.id !== id));
           if (currentPlayer) {
             await refreshHeroCategories(currentPlayer.id);
             await refreshHeroEvaluations(currentPlayer.id);
+            await refreshHeroMatchups(currentPlayer.id);
           }
           return true;
         });
@@ -483,6 +524,53 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           )) ?? []
         );
       },
+      async loadHeroMatchups(heroId) {
+        if (!currentPlayer) {
+          return [];
+        }
+        const result = await capture(async () =>
+          new LoadHeroMatchups(repositories.heroMatchups).execute(
+            currentPlayer.id,
+            heroId,
+          ),
+        );
+        return result ?? [];
+      },
+      async saveHeroMatchup(heroId, opponentHeroId, score) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new SaveHeroMatchup(
+            repositories.playerHeroes,
+            repositories.heroMatchups,
+            isoClock,
+          ).execute({
+            playerId: currentPlayer.id,
+            heroId,
+            opponentHeroId,
+            score,
+          });
+          await refreshHeroMatchups(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async removeHeroMatchup(heroId, opponentHeroId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          await new RemoveHeroMatchup(repositories.heroMatchups).execute(
+            currentPlayer.id,
+            heroId,
+            opponentHeroId,
+          );
+          await refreshHeroMatchups(currentPlayer.id);
+          return true;
+        });
+        return Boolean(result);
+      },
       async snapshot() {
         return {
           players: await repositories.players.list(),
@@ -491,6 +579,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           heroCategories: await repositories.heroCategories.list(),
           playerHeroCategories: await repositories.playerHeroCategories.list(),
           heroEvaluations: await repositories.heroEvaluations.list(),
+          heroMatchups: await repositories.heroMatchups.list(),
           heroes: await repositories.heroes.list(),
         };
       },
@@ -501,12 +590,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       currentPreferences,
       error,
       heroEvaluations,
+      heroMatchups,
       heroCategories,
       heroPool,
       playerHeroCategories,
       refreshHeroCategories,
       refreshHeroEvaluations,
       refreshHeroPool,
+      refreshHeroMatchups,
       repositories,
     ],
   );
