@@ -20,6 +20,9 @@ export class SupabasePlayerHeroMatchupRepository implements PlayerHeroMatchupRep
       .eq('player_id', playerId)
       .eq('hero_id', heroId);
     if (error) {
+      if (isMissingMatchupTableError(error)) {
+        return [];
+      }
       throw new SupabaseRepositoryError(
         'PlayerHeroMatchupRepository',
         'findByPlayerAndHero',
@@ -42,6 +45,9 @@ export class SupabasePlayerHeroMatchupRepository implements PlayerHeroMatchupRep
       .eq('opponent_hero_id', opponentHeroId)
       .maybeSingle();
     if (error) {
+      if (isMissingMatchupTableError(error)) {
+        return null;
+      }
       throw new SupabaseRepositoryError(
         'PlayerHeroMatchupRepository',
         'findByPlayerHeroAndOpponent',
@@ -81,6 +87,9 @@ export class SupabasePlayerHeroMatchupRepository implements PlayerHeroMatchupRep
       .eq('hero_id', heroId)
       .eq('opponent_hero_id', opponentHeroId);
     if (error) {
+      if (isMissingMatchupTableError(error)) {
+        return;
+      }
       throw new SupabaseRepositoryError(
         'PlayerHeroMatchupRepository',
         'remove',
@@ -96,6 +105,9 @@ export class SupabasePlayerHeroMatchupRepository implements PlayerHeroMatchupRep
       .eq('player_id', playerId)
       .eq('hero_id', heroId);
     if (error) {
+      if (isMissingMatchupTableError(error)) {
+        return;
+      }
       throw new SupabaseRepositoryError(
         'PlayerHeroMatchupRepository',
         'removeByPlayerHero',
@@ -110,6 +122,9 @@ export class SupabasePlayerHeroMatchupRepository implements PlayerHeroMatchupRep
       .select()
       .order('player_id', { ascending: true });
     if (error) {
+      if (isMissingMatchupTableError(error)) {
+        return [];
+      }
       throw new SupabaseRepositoryError(
         'PlayerHeroMatchupRepository',
         'list',
@@ -137,6 +152,21 @@ export function toPlayerHeroMatchup(
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function isMissingMatchupTableError(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  const message = error.message?.toLowerCase() ?? '';
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    message.includes('player_hero_matchups') &&
+      (message.includes('does not exist') ||
+        message.includes('schema cache') ||
+        message.includes('could not find'))
+  );
 }
 
 export function toPlayerHeroMatchupRow(

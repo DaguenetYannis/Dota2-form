@@ -86,8 +86,8 @@ export interface Database {
           preferred_playstyles: string[];
           required_allied_features: string[];
           personal_notes: string;
-          fight_entry_start_minute: number | null;
-          fight_entry_end_minute: number | null;
+          fight_entry_start_minute?: number | null;
+          fight_entry_end_minute?: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -107,8 +107,8 @@ export interface Database {
           preferred_playstyles: string[];
           required_allied_features: string[];
           personal_notes: string;
-          fight_entry_start_minute: number | null;
-          fight_entry_end_minute: number | null;
+          fight_entry_start_minute?: number | null;
+          fight_entry_end_minute?: number | null;
           created_at: string;
           updated_at: string;
         };

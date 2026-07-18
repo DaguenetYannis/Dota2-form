@@ -178,7 +178,7 @@ export function toPlayerHero(row: PlayerHeroRow): PlayerHero {
 export function toPlayerHeroRow(
   playerHero: PlayerHero,
 ): Database['public']['Tables']['player_heroes']['Insert'] {
-  return {
+  const row: Database['public']['Tables']['player_heroes']['Insert'] = {
     id: playerHero.id,
     player_id: playerHero.playerId,
     hero_id: playerHero.heroId,
@@ -194,9 +194,17 @@ export function toPlayerHeroRow(
     preferred_playstyles: playerHero.preferredPlaystyles,
     required_allied_features: playerHero.requiredAlliedFeatures,
     personal_notes: playerHero.personalNotes,
-    fight_entry_start_minute: playerHero.fightEntryStartMinute,
-    fight_entry_end_minute: playerHero.fightEntryEndMinute,
     created_at: playerHero.createdAt,
     updated_at: playerHero.updatedAt,
   };
+
+  if (
+    playerHero.fightEntryStartMinute !== null ||
+    playerHero.fightEntryEndMinute !== null
+  ) {
+    row.fight_entry_start_minute = playerHero.fightEntryStartMinute;
+    row.fight_entry_end_minute = playerHero.fightEntryEndMinute;
+  }
+
+  return row;
 }
