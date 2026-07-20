@@ -19,3 +19,7 @@ export function normalizePlayerPseudo(pseudo: string): string {
 export function normalizeSteamId(steamId: string): string {
   return steamId.trim();
 }
+
+export function normalizeTeamId(teamId: string): string {
+  return teamId.trim();
+}

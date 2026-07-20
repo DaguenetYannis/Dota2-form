@@ -46,6 +46,7 @@ import type { Player } from '@/domain/entities/player';
 import {
   normalizePlayerPseudo,
   normalizeSteamId,
+  normalizeTeamId,
 } from '@/domain/entities/player';
 import type { PlayerHero } from '@/domain/entities/player-hero';
 import type {
@@ -94,6 +95,7 @@ interface AppStateValue {
   error: string | null;
   resolvePlayer(identifier: string): Promise<Player | undefined>;
   updateSteamId(steamId: string): Promise<boolean>;
+  updateTeamId(teamId: string): Promise<boolean>;
   createProfile(input: CreatePlayerProfileInput): Promise<boolean>;
   saveProfile(input: UpdatePlayerProfileInput): Promise<boolean>;
   updatePreferences(input: PlayerPreferences): Promise<boolean>;
@@ -312,6 +314,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           const saved = await repositories.players.save({
             ...currentPlayer,
             steamId: normalizeSteamId(steamId),
+            updatedAt: isoClock(),
+          });
+          setCurrentPlayer(saved);
+          return true;
+        });
+        return Boolean(result);
+      },
+      async updateTeamId(teamId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          const saved = await repositories.players.save({
+            ...currentPlayer,
+            teamId: normalizeTeamId(teamId),
             updatedAt: isoClock(),
           });
           setCurrentPlayer(saved);

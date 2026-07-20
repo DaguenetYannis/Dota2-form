@@ -9,7 +9,7 @@ import { useAppState } from '@/lib/app-state';
 type PlayerTab = 'profile' | 'heroPool';
 
 export function PlayerSpace() {
-  const { currentPlayer, updateSteamId, error } = useAppState();
+  const { currentPlayer, updateSteamId, updateTeamId, error } = useAppState();
   const [activeTab, setActiveTab] = useState<PlayerTab>('profile');
 
   if (!currentPlayer) {
@@ -27,7 +27,9 @@ export function PlayerSpace() {
             error={error}
             pseudonym={currentPlayer.pseudonym}
             steamId={currentPlayer.steamId}
+            teamId={currentPlayer.teamId}
             onSaveSteamId={updateSteamId}
+            onSaveTeamId={updateTeamId}
           />
         </div>
         <div>
@@ -93,41 +95,74 @@ export function PlayerSpace() {
 function PlayerIdentityBadge({
   pseudonym,
   steamId,
+  teamId,
   error,
   onSaveSteamId,
+  onSaveTeamId,
 }: {
   pseudonym: string;
   steamId: string | null;
+  teamId: string;
   error: string | null;
   onSaveSteamId: (steamId: string) => Promise<boolean>;
+  onSaveTeamId: (teamId: string) => Promise<boolean>;
 }) {
   const [draftSteamId, setDraftSteamId] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [localError, setLocalError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [draftTeamId, setDraftTeamId] = useState(teamId);
+  const [isSavingSteam, setIsSavingSteam] = useState(false);
+  const [isSavingTeam, setIsSavingTeam] = useState(false);
+  const [steamError, setSteamError] = useState('');
+  const [teamError, setTeamError] = useState('');
+  const [steamSaved, setSteamSaved] = useState(false);
+  const [teamSaved, setTeamSaved] = useState(false);
 
   useEffect(() => {
     setDraftSteamId('');
-    setLocalError('');
-    setSaved(false);
+    setSteamError('');
+    setSteamSaved(false);
   }, [steamId]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    setDraftTeamId(teamId);
+    setTeamError('');
+    setTeamSaved(false);
+  }, [teamId]);
+
+  async function handleSteamSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = draftSteamId.trim();
     if (!normalized) {
-      setLocalError('Le Steam ID est obligatoire.');
+      setSteamError('Le Steam ID est obligatoire.');
       return;
     }
 
-    setLocalError('');
-    setSaved(false);
-    setIsSaving(true);
+    setSteamError('');
+    setSteamSaved(false);
+    setIsSavingSteam(true);
     const didSave = await onSaveSteamId(normalized);
-    setIsSaving(false);
-    setSaved(didSave);
+    setIsSavingSteam(false);
+    setSteamSaved(didSave);
     if (!didSave) {
-      setLocalError(error ?? "Échec de l'enregistrement.");
+      setSteamError(error ?? "Échec de l'enregistrement.");
+    }
+  }
+
+  async function handleTeamSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = draftTeamId.trim();
+    if (!normalized) {
+      setTeamError("L'équipe est obligatoire.");
+      return;
+    }
+
+    setTeamError('');
+    setTeamSaved(false);
+    setIsSavingTeam(true);
+    const didSave = await onSaveTeamId(normalized);
+    setIsSavingTeam(false);
+    setTeamSaved(didSave);
+    if (!didSave) {
+      setTeamError(error ?? "Échec de l'enregistrement.");
     }
   }
 
@@ -151,7 +186,7 @@ function PlayerIdentityBadge({
         ) : null}
       </div>
       {!steamId ? (
-        <form className="grid gap-2" onSubmit={handleSubmit}>
+        <form className="grid gap-2" onSubmit={handleSteamSubmit}>
           <div className="grid gap-1 text-xs font-medium text-[var(--text-secondary)]">
             <span className="inline-flex items-center gap-2">
               <label htmlFor="steam-id">Steam ID</label>
@@ -165,30 +200,66 @@ function PlayerIdentityBadge({
               value={draftSteamId}
               onChange={(event) => {
                 setDraftSteamId(event.target.value);
-                setLocalError('');
-                setSaved(false);
+                setSteamError('');
+                setSteamSaved(false);
               }}
             />
           </div>
           <button
             className="min-h-8 rounded bg-[var(--accent)] px-3 text-xs font-semibold text-white disabled:opacity-60"
-            disabled={isSaving}
+            disabled={isSavingSteam}
             type="submit"
           >
-            {isSaving ? 'Enregistrement...' : 'Ajouter le Steam ID'}
+            {isSavingSteam ? 'Enregistrement...' : 'Ajouter le Steam ID'}
           </button>
-          {localError ? (
+          {steamError ? (
             <p className="text-xs text-[var(--danger)]" role="alert">
-              {localError}
+              {steamError}
             </p>
           ) : null}
-          {saved ? (
+          {steamSaved ? (
             <p className="text-xs text-[var(--text-secondary)]">
               Steam ID enregistré.
             </p>
           ) : null}
         </form>
       ) : null}
+      <form
+        className="grid gap-2 border-t border-[var(--border)] pt-2"
+        onSubmit={handleTeamSubmit}
+      >
+        <label className="grid gap-1 text-xs font-medium text-[var(--text-secondary)]">
+          Équipe
+          <input
+            aria-label="Équipe"
+            className="min-h-9 w-48 rounded border border-[var(--border)] bg-[var(--surface)] px-2 text-[var(--text-primary)]"
+            value={draftTeamId}
+            onChange={(event) => {
+              setDraftTeamId(event.target.value);
+              setTeamError('');
+              setTeamSaved(false);
+            }}
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </label>
+        <button
+          className="min-h-8 rounded bg-[var(--accent)] px-3 text-xs font-semibold text-white disabled:opacity-60"
+          disabled={isSavingTeam || draftTeamId.trim() === teamId}
+          type="submit"
+        >
+          {isSavingTeam ? 'Enregistrement...' : "Enregistrer l'équipe"}
+        </button>
+        {teamError ? (
+          <p className="text-xs text-[var(--danger)]" role="alert">
+            {teamError}
+          </p>
+        ) : null}
+        {teamSaved ? (
+          <p className="text-xs text-[var(--text-secondary)]">
+            Équipe enregistrée.
+          </p>
+        ) : null}
+      </form>
     </div>
   );
 }

@@ -78,4 +78,32 @@ describe('PlayerSpace', () => {
       'readonly',
     );
   });
+
+  it('lets the player replace their team from the header', async () => {
+    render(
+      <AppStateProvider>
+        <PlayerSpace />
+      </AppStateProvider>,
+    );
+
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /pseudo ou steam id/i }),
+      'Nerros',
+    );
+    await userEvent.click(screen.getByRole('button', { name: /continuer/i }));
+
+    const teamInput = await screen.findByRole('textbox', { name: /équipe/i });
+    expect(teamInput).toHaveValue('local-team');
+
+    await userEvent.clear(teamInput);
+    await userEvent.type(teamInput, 'Les Copains');
+    await userEvent.click(
+      screen.getByRole('button', { name: /enregistrer l'équipe/i }),
+    );
+
+    expect(await screen.findByText(/équipe enregistrée/i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /équipe/i })).toHaveValue(
+      'Les Copains',
+    );
+  });
 });
