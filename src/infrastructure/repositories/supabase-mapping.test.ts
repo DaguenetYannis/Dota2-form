@@ -29,6 +29,7 @@ describe('Supabase database mappings', () => {
       teamId: 'team-1',
       pseudonym: 'Yannis',
       normalizedPseudo: 'yannis',
+      steamId: '123456789',
       mainRole: 'position_2',
       secondaryRoles: ['position_4', 'position_5'],
       createdAt: '2026-07-17T10:00:00.000Z',
@@ -40,6 +41,7 @@ describe('Supabase database mappings', () => {
 
     expect(row.pseudonym).toBe('Yannis');
     expect(row.normalized_pseudo).toBe('yannis');
+    expect(row.steam_id).toBe('123456789');
     expect(mapped).toEqual(player);
   });
 
@@ -132,6 +134,7 @@ describe('Supabase database mappings', () => {
       teamId: 'team-1',
       pseudonym: 'Yannis',
       normalizedPseudo: 'yannis',
+      steamId: null,
       mainRole: 'position_2',
       secondaryRoles: [],
       createdAt: '2026-07-17T10:00:00.000Z',

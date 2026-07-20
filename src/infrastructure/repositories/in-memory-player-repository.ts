@@ -23,6 +23,14 @@ export class InMemoryPlayerRepository implements PlayerRepository {
     );
   }
 
+  async findBySteamId(steamId: string): Promise<Player | null> {
+    return (
+      Array.from(this.players.values()).find(
+        (player) => player.steamId === steamId,
+      ) ?? null
+    );
+  }
+
   async list(): Promise<Player[]> {
     return Array.from(this.players.values());
   }

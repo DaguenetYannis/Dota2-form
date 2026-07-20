@@ -15,6 +15,7 @@ export interface Database {
           team_id: string;
           pseudonym: string;
           normalized_pseudo: string;
+          steam_id: string | null;
           main_role: string;
           secondary_roles: string[];
           created_at: string;
@@ -25,6 +26,7 @@ export interface Database {
           team_id: string;
           pseudonym: string;
           normalized_pseudo: string;
+          steam_id?: string | null;
           main_role: string;
           secondary_roles: string[];
           created_at: string;

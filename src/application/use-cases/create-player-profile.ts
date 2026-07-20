@@ -61,6 +61,7 @@ export class CreatePlayerProfile {
       teamId: input.teamId,
       pseudonym: input.pseudonym.trim(),
       normalizedPseudo: normalizePlayerPseudo(input.pseudonym),
+      steamId: null,
       mainRole: input.mainRole,
       secondaryRoles: input.secondaryRoles,
       createdAt: now,

@@ -20,11 +20,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
       .single();
 
     if (error) {
-      throw new SupabaseRepositoryError(
-        'PlayerRepository',
-        'save',
-        error,
-      );
+      throw new SupabaseRepositoryError('PlayerRepository', 'save', error);
     }
 
     return toPlayer(data);
@@ -38,11 +34,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
       .maybeSingle();
 
     if (error) {
-      throw new SupabaseRepositoryError(
-        'PlayerRepository',
-        'findById',
-        error,
-      );
+      throw new SupabaseRepositoryError('PlayerRepository', 'findById', error);
     }
 
     return data ? toPlayer(data) : null;
@@ -68,6 +60,26 @@ export class SupabasePlayerRepository implements PlayerRepository {
     return data ? toPlayer(data) : null;
   }
 
+  async findBySteamId(steamId: string): Promise<Player | null> {
+    const { data, error } = await this.client
+      .from('players')
+      .select()
+      .eq('steam_id', steamId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new SupabaseRepositoryError(
+        'PlayerRepository',
+        'findBySteamId',
+        error,
+      );
+    }
+
+    return data ? toPlayer(data) : null;
+  }
+
   async list(): Promise<Player[]> {
     const { data, error } = await this.client
       .from('players')
@@ -75,11 +87,7 @@ export class SupabasePlayerRepository implements PlayerRepository {
       .order('created_at', { ascending: true });
 
     if (error) {
-      throw new SupabaseRepositoryError(
-        'PlayerRepository',
-        'list',
-        error,
-      );
+      throw new SupabaseRepositoryError('PlayerRepository', 'list', error);
     }
 
     return data.map(toPlayer);
@@ -94,6 +102,7 @@ export function toPlayer(row: PlayerRow): Player {
     teamId: row.team_id,
     pseudonym: row.pseudonym,
     normalizedPseudo: row.normalized_pseudo,
+    steamId: row.steam_id,
     mainRole: mapStringLiteral(row.main_role, roleIds, 'players.main_role'),
     secondaryRoles: mapStringLiteralArray(
       row.secondary_roles,
@@ -107,12 +116,13 @@ export function toPlayer(row: PlayerRow): Player {
 
 export function toPlayerRow(
   player: Player,
-): Database['public']['Tables']['players']['Insert'] {
+): Database['public']['Tables']['players']['Row'] {
   return {
     id: player.id,
     team_id: player.teamId,
     pseudonym: player.pseudonym,
     normalized_pseudo: player.normalizedPseudo,
+    steam_id: player.steamId,
     main_role: player.mainRole,
     secondary_roles: player.secondaryRoles,
     created_at: player.createdAt,

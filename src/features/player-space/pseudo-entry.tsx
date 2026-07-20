@@ -7,20 +7,20 @@ import { useAppState } from '@/lib/app-state';
 export function PseudoEntry() {
   const router = useRouter();
   const { resolvePlayer, error } = useAppState();
-  const [pseudonym, setPseudonym] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!pseudonym.trim()) {
-      setLocalError('Le pseudo est obligatoire.');
+    if (!identifier.trim()) {
+      setLocalError('Le pseudo ou Steam ID est obligatoire.');
       return;
     }
 
     setLocalError(null);
     setIsSubmitting(true);
-    const player = await resolvePlayer(pseudonym);
+    const player = await resolvePlayer(identifier);
     setIsSubmitting(false);
 
     if (player) {
@@ -40,9 +40,9 @@ export function PseudoEntry() {
           </p>
           <label
             className="text-2xl font-bold text-[var(--text-primary)]"
-            htmlFor="pseudonym"
+            htmlFor="player-identifier"
           >
-            Quel est ton pseudo ?
+            Quel est ton pseudo ou Steam ID ?
           </label>
           <p className="text-sm text-[var(--text-secondary)]">
             Retrouve ton profil ou commence-en un nouveau.
@@ -53,11 +53,11 @@ export function PseudoEntry() {
             autoComplete="nickname"
             autoFocus
             className="min-h-12 rounded-md border border-[var(--border)] bg-[var(--surface-elevated)] px-4 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]"
-            id="pseudonym"
-            placeholder="Ton pseudo"
-            value={pseudonym}
+            id="player-identifier"
+            placeholder="Ton pseudo ou Steam ID"
+            value={identifier}
             onChange={(event) => {
-              setPseudonym(event.target.value);
+              setIdentifier(event.target.value);
               if (localError) {
                 setLocalError(null);
               }

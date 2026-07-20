@@ -43,7 +43,10 @@ import {
 } from '@/application/use-cases/update-player-profile';
 import { UpdatePlayerPreferences } from '@/application/use-cases/update-player-preferences';
 import type { Player } from '@/domain/entities/player';
-import { normalizePlayerPseudo } from '@/domain/entities/player';
+import {
+  normalizePlayerPseudo,
+  normalizeSteamId,
+} from '@/domain/entities/player';
 import type { PlayerHero } from '@/domain/entities/player-hero';
 import type {
   HeroCategory,
@@ -89,7 +92,8 @@ interface AppStateValue {
   heroMatchups: PlayerHeroMatchup[];
   heroes: typeof heroFixture;
   error: string | null;
-  resolvePlayer(pseudonym: string): Promise<Player | undefined>;
+  resolvePlayer(identifier: string): Promise<Player | undefined>;
+  updateSteamId(steamId: string): Promise<boolean>;
   createProfile(input: CreatePlayerProfileInput): Promise<boolean>;
   saveProfile(input: UpdatePlayerProfileInput): Promise<boolean>;
   updatePreferences(input: PlayerPreferences): Promise<boolean>;
@@ -237,12 +241,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       heroMatchups,
       heroes: heroFixture,
       error,
-      async resolvePlayer(pseudonym) {
+      async resolvePlayer(identifier) {
         return capture(async () => {
-          const displayPseudo = pseudonym.trim();
+          const displayPseudo = identifier.trim();
+          const steamId = normalizeSteamId(identifier);
           const normalizedPseudo = normalizePlayerPseudo(displayPseudo);
           const existing =
-            await repositories.players.findByNormalizedPseudo(normalizedPseudo);
+            (isSteamIdLike(steamId)
+              ? await repositories.players.findBySteamId(steamId)
+              : null) ??
+            (await repositories.players.findByNormalizedPseudo(
+              normalizedPseudo,
+            ));
 
           if (existing) {
             const existingPreferences =
@@ -261,6 +271,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             await refreshHeroEvaluations(existing.id);
             await refreshHeroMatchups(existing.id);
             return existing;
+          }
+
+          if (isSteamIdLike(steamId)) {
+            throw new DomainValidationError([
+              {
+                code: 'not_found',
+                field: 'steamId',
+                message: 'Aucun profil joueur ne correspond à ce Steam ID.',
+              },
+            ]);
           }
 
           const result = await new CreatePlayerProfile(
@@ -283,6 +303,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           await refreshHeroMatchups(result.player.id);
           return result.player;
         });
+      },
+      async updateSteamId(steamId) {
+        if (!currentPlayer) {
+          return false;
+        }
+        const result = await capture(async () => {
+          const saved = await repositories.players.save({
+            ...currentPlayer,
+            steamId: normalizeSteamId(steamId),
+            updatedAt: isoClock(),
+          });
+          setCurrentPlayer(saved);
+          return true;
+        });
+        return Boolean(result);
       },
       async createProfile(input) {
         const result = await capture(async () => {
@@ -628,4 +663,8 @@ function getUserMessage(error: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function isSteamIdLike(value: string): boolean {
+  return /^\d{5,}$/.test(value);
 }

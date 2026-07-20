@@ -5,6 +5,7 @@ export interface Player {
   teamId: string;
   pseudonym: string;
   normalizedPseudo: string;
+  steamId: string | null;
   mainRole: RoleId;
   secondaryRoles: RoleId[];
   createdAt: string;
@@ -13,4 +14,8 @@ export interface Player {
 
 export function normalizePlayerPseudo(pseudo: string): string {
   return pseudo.trim().toLocaleLowerCase();
+}
+
+export function normalizeSteamId(steamId: string): string {
+  return steamId.trim();
 }
