@@ -12,6 +12,13 @@ export function PlayerSpace() {
   const { currentPlayer, updateSteamId, updateTeamId, error } = useAppState();
   const [activeTab, setActiveTab] = useState<PlayerTab>('profile');
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'heroPool') {
+      setActiveTab('heroPool');
+    }
+  }, []);
+
   if (!currentPlayer) {
     return <PseudoEntry />;
   }

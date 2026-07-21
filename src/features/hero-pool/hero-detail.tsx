@@ -423,7 +423,7 @@ export function HeroDetail({ heroId }: { heroId: string }) {
   if (!currentPlayer) {
     return (
       <section className="grid gap-4">
-        <Link className="text-sm text-[var(--accent-hover)]" href="/player">
+        <Link className="text-sm text-[var(--accent-hover)]" href="/player?tab=heroPool">
           Retour au Hero pool
         </Link>
         <p className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text-secondary)]">
@@ -436,7 +436,7 @@ export function HeroDetail({ heroId }: { heroId: string }) {
   if (!hero || !playerHero) {
     return (
       <section className="grid gap-4">
-        <Link className="text-sm text-[var(--accent-hover)]" href="/player">
+        <Link className="text-sm text-[var(--accent-hover)]" href="/player?tab=heroPool">
           Retour au Hero pool
         </Link>
         <p className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text-secondary)]">
@@ -450,7 +450,7 @@ export function HeroDetail({ heroId }: { heroId: string }) {
 
   return (
     <section className="mx-auto grid w-full max-w-5xl gap-6">
-      <Link className="text-sm text-[var(--accent-hover)]" href="/player">
+      <Link className="text-sm text-[var(--accent-hover)]" href="/player?tab=heroPool">
         Retour au Hero pool
       </Link>
       <header className="grid gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)] md:grid-cols-[16rem_1fr]">
