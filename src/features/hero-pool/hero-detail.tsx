@@ -10,7 +10,6 @@ import {
 import { HeroThumbnail } from '@/components/hero-thumbnail';
 import { SaveStatus, type SaveState } from '@/components/save-status';
 import type { Hero } from '@/domain/entities/hero';
-import { isCorePlayerHero } from '@/domain/entities/player-hero';
 import {
   getMatchupCategory,
   heroMatchupScores,
@@ -494,8 +493,7 @@ export function HeroDetail({ heroId }: { heroId: string }) {
         </p>
       ) : null}
 
-      {isCorePlayerHero(playerHero) ? (
-        <section className="grid gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
+      <section className="grid gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-primary)]">
               Timing de combat
@@ -544,8 +542,7 @@ export function HeroDetail({ heroId }: { heroId: string }) {
               Effacer le timing
             </button>
           </div>
-        </section>
-      ) : null}
+      </section>
 
       <section className="grid gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-panel)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
